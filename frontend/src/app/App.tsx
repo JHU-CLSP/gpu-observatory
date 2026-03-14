@@ -18,17 +18,23 @@ export default function App() {
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>(generateHistoricalData(24));
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchStats = async () => {
-    const [dsai, rockfish, ia1] = await Promise.all([
-      fetch(`${API_BASE}/stats/dsai`).then(r => r.json()),
-      fetch(`${API_BASE}/stats/rockfish`).then(r => r.json()),
-      fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
-    ]);
-    setDsaiStats(dsai);
-    setRockfishStats(rockfish);
-    setIa1Stats(ia1);
-    setLastUpdate(new Date());
+    try {
+      const [dsai, rockfish, ia1] = await Promise.all([
+        fetch(`${API_BASE}/stats/dsai`).then(r => r.json()),
+        fetch(`${API_BASE}/stats/rockfish`).then(r => r.json()),
+        fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
+      ]);
+      setDsaiStats(dsai);
+      setRockfishStats(rockfish);
+      setIa1Stats(ia1);
+      setLastUpdate(new Date());
+      setFetchError(null);
+    } catch (err) {
+      setFetchError(`Cannot reach backend at ${API_BASE}. Is uvicorn running?`);
+    }
   };
 
   const refreshData = async () => {
@@ -65,8 +71,17 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-muted-foreground">Loading GPU stats...</p>
+          {fetchError ? (
+            <>
+              <p className="text-red-500 font-medium mb-2">{fetchError}</p>
+              <p className="text-sm text-muted-foreground">Run: <code>uvicorn app:app --reload --port 8000</code></p>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-muted-foreground">Loading GPU stats...</p>
+            </>
+          )}
         </div>
       </div>
     );

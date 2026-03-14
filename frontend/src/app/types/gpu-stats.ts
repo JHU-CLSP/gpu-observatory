@@ -38,8 +38,8 @@ export interface DSAIStats {
     total: number;
   };
   interactive_jobs: DSAIInteractiveJob[];
-  scratch_space_total_gb: number;
-  scratch_space_used_gb: number;
+  scratch_space_total_tb: number;
+  scratch_space_used_tb: number;
 }
 
 export interface RockfishPartition {
@@ -66,8 +66,8 @@ export interface RockfishStats {
     total: number;
   };
   interactive_jobs: DSAIInteractiveJob[];
-  scratch_space_total_gb: number;
-  scratch_space_used_gb: number;
+  scratch_space_total_tb: number;
+  scratch_space_used_tb: number;
 }
 
 export interface IA1GPU {
@@ -103,8 +103,8 @@ export interface IA1Stats {
   gpus: IA1GPU[];
   users: IA1User[];
   idle_allocated_gpus: IA1IdleGPU[];
-  scratch_space_total_gb: number;
-  scratch_space_used_gb: number;
+  scratch_space_total_tb: number;
+  scratch_space_used_tb: number;
 }
 
 export interface HistoricalDataPoint {

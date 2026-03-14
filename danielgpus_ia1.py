@@ -153,6 +153,23 @@ else:
 print()
 
 # ============================================================
+# Scratch space
+# ============================================================
+
+def get_scratch_space_tb(path):
+    out = run(["df", "-PBG", path])
+    for line in out.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) >= 3:
+            total_gb = int(parts[1].rstrip("G"))
+            used_gb  = int(parts[2].rstrip("G"))
+            return round(total_gb / 1024, 1), round(used_gb / 1024, 1)
+    return 0, 0
+
+scratch_total_tb, scratch_used_tb = get_scratch_space_tb("/scratch")
+print(f"Scratch /scratch: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+
+# ============================================================
 # JSON output
 # ============================================================
 
@@ -181,6 +198,8 @@ report = {
     "idle_allocated_gpus": [
         {"gpu": idx, "user": user} for idx, user in idle_allocated
     ],
+    "scratch_space_total_tb": scratch_total_tb,
+    "scratch_space_used_tb":  scratch_used_tb,
 }
 
 print(json.dumps(report, indent=2))

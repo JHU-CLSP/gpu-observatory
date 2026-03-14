@@ -11,9 +11,9 @@ interface DSAIServerCardProps {
 export function DSAIServerCard({ stats }: DSAIServerCardProps) {
   const teamUsagePercent = (stats.dkhasha1_totals.total / 32) * 100;
   const totalUsagePercent = (stats.partition_totals.used / stats.partition_totals.total) * 100;
-  const scratchUsedPercent = (stats.scratch_space_used_gb / stats.scratch_space_total_gb) * 100;
-  const scratchFreeGb = stats.scratch_space_total_gb - stats.scratch_space_used_gb;
-
+  const scratchUsedPercent = stats.scratch_space_total_tb > 0
+    ? (stats.scratch_space_used_tb / stats.scratch_space_total_tb) * 100
+    : 0;
   return (
     <Card className="w-full">
       <CardHeader>
@@ -63,17 +63,14 @@ export function DSAIServerCard({ stats }: DSAIServerCardProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
               <HardDrive className="h-4 w-4" />
-              Scratch Space
+              Scratch <span className="text-xs text-muted-foreground">/scratch/dkhasha1</span>
             </span>
             <span className="font-bold">
-              {scratchFreeGb.toLocaleString()} GB free
+              {stats.scratch_space_used_tb} / {stats.scratch_space_total_tb} TB
             </span>
           </div>
           <Progress value={scratchUsedPercent} className="h-2" />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{stats.scratch_space_used_gb.toLocaleString()} GB used</span>
-            <span>{stats.scratch_space_total_gb.toLocaleString()} GB total</span>
-          </div>
+          <p className="text-xs text-muted-foreground">{scratchUsedPercent.toFixed(1)}% utilized</p>
         </div>
 
         {/* Partition Breakdown */}
