@@ -7,8 +7,8 @@ dsai remote server via SSH automatically.
 """
 
 import json
+import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -16,8 +16,11 @@ from datetime import datetime
 
 REMOTE = "dsai"
 
-if not shutil.which("scontrol"):
-    sys.exit(subprocess.run(["ssh", REMOTE, "python3", "-"], stdin=open(__file__)).returncode)
+if os.environ.get("_GPUSTATS_ON_REMOTE") != "1":
+    sys.exit(subprocess.run(
+        ["ssh", REMOTE, "env", "_GPUSTATS_ON_REMOTE=1", "python3", "-"],
+        stdin=open(__file__)
+    ).returncode)
 
 PARTITIONS = ["a100", "h100", "nvl", "l40s"]
 
@@ -327,7 +330,7 @@ def parse_size_tb(s):
 
 def get_scratch_space_tb(fs_path="/scratch/dkhasha1/"):
     """Parse scratch quota from quotas.py output (DSAI GPFS table)."""
-    out = run(["quotas.py"])
+    out = run(["/weka/apps/helpers/quotas.py"])
     for line in out.splitlines():
         cols = [c.strip() for c in line.split("|")]
         cols = [c for c in cols if c]

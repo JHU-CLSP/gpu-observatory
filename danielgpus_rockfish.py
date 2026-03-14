@@ -7,8 +7,8 @@ rockfish remote server via SSH automatically.
 """
 
 import json
+import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -16,8 +16,11 @@ from datetime import datetime
 
 REMOTE = "rockfish"
 
-if not shutil.which("scontrol"):
-    sys.exit(subprocess.run(["ssh", REMOTE, "python3", "-"], stdin=open(__file__)).returncode)
+if os.environ.get("_GPUSTATS_ON_REMOTE") != "1":
+    sys.exit(subprocess.run(
+        ["ssh", REMOTE, "env", "_GPUSTATS_ON_REMOTE=1", "python3", "-"],
+        stdin=open(__file__)
+    ).returncode)
 
 PARTITIONS = ["a100", "ica100", "l40s", "v100"]
 
