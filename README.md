@@ -2,6 +2,9 @@
 
 Real-time GPU monitoring for DSAI, Rockfish, and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
 
+![screenshot-2.png](screenshot-2.png)
+![screenshot-1.png](screenshot-1.png)
+
 ## Requirements
 
 - Python 3.9+
