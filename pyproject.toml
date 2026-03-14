@@ -3,4 +3,7 @@ name = "gpu-stats-ia1-lab"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
