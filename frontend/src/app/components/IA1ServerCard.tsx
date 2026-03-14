@@ -147,25 +147,40 @@ export function IA1ServerCard({ stats }: IA1ServerCardProps) {
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">Active Users</h4>
             <div className="space-y-2">
-              {stats.users.map((user) => (
-                <div
-                  key={user.user}
-                  className="border rounded-lg p-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm">{user.user}</span>
-                    <Badge variant="secondary">
-                      {user.gpu_indices.length} GPU{user.gpu_indices.length !== 1 ? 's' : ''}
-                    </Badge>
+              {stats.users.map((user) => {
+                const idleGPUs = stats.idle_allocated_gpus
+                  .filter((g) => g.user === user.user)
+                  .map((g) => g.gpu);
+                return (
+                  <div
+                    key={user.user}
+                    className="border rounded-lg p-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-sm">{user.user}</span>
+                      <div className="flex items-center gap-2">
+                        {idleGPUs.length > 0 && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-600 text-xs">
+                            {idleGPUs.length} idle
+                          </Badge>
+                        )}
+                        <Badge variant="secondary">
+                          {user.gpu_indices.length} GPU{user.gpu_indices.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      GPUs: {user.gpu_indices.join(", ")}
+                      {idleGPUs.length > 0 && (
+                        <span className="text-amber-600 ml-1">(idle: {idleGPUs.join(", ")})</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Memory: {(user.mem_used_mb / 1024).toFixed(2)} GB
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    GPUs: {user.gpu_indices.join(", ")}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Memory: {(user.mem_used_mb / 1024).toFixed(2)} GB
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

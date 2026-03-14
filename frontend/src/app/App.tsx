@@ -5,7 +5,7 @@ import { IA1ServerCard } from "./components/IA1ServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
 import { DSAIStats, RockfishStats, IA1Stats, HistoricalDataPoint } from "./types/gpu-stats";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = "";
 import { Button } from "./components/ui/button";
 import { RefreshCw, Activity } from "lucide-react";
 import { Badge } from "./components/ui/badge";
@@ -126,6 +126,11 @@ export default function App() {
             </div>
             <div className="text-xs text-muted-foreground mt-1">
               {((dsaiStats.dkhasha1_totals.total / 32) * 100).toFixed(1)}% of allocation
+              {dsaiStats.idle_allocated_gpus?.length > 0 && (
+                <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600">
+                  {dsaiStats.idle_allocated_gpus.length} idle allocated
+                </Badge>
+              )}
             </div>
           </div>
 

@@ -222,6 +222,97 @@ if interactive_jobs:
 print()
 
 # ============================================================
+# Section 4: Idle-allocated GPUs (dkhasha1 team)
+# Finds GPUs our team has allocated but is not actively using.
+# ============================================================
+
+squeue_nodes_out = run([
+    "squeue",
+    "-O", "JobID:12,UserName:20,NodeList:100,tres-alloc:100",
+    "--account=dkhasha1",
+    "-t", "R",
+    "--noheader",
+])
+
+node_to_users = defaultdict(set)  # node -> set of users with GPU jobs there
+for line in squeue_nodes_out.splitlines():
+    fields = line.split()
+    if len(fields) < 3:
+        continue
+    user     = fields[1].strip()
+    nodelist = fields[2].strip()
+    tres     = fields[3].strip() if len(fields) > 3 else ""
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    if not m or int(m.group(1)) == 0:
+        continue
+    # Expand compact SLURM node list e.g. "gpu[01-03]" -> ["gpu01","gpu02","gpu03"]
+    expanded = run(["scontrol", "show", "hostnames", nodelist]).split()
+    for node in expanded:
+        if node:
+            node_to_users[node].add(user)
+
+idle_allocated_gpus = []  # {node, gpu_index, util_pct, users}
+
+for node, users in sorted(node_to_users.items()):
+    cmd = (
+        "nvidia-smi --query-gpu=index,utilization.gpu,uuid --format=csv,noheader,nounits 2>/dev/null; "
+        "echo '---SEP---'; "
+        "nvidia-smi --query-compute-apps=gpu_uuid,used_memory --format=csv,noheader,nounits 2>/dev/null"
+    )
+    out = run(["ssh",
+               "-o", "StrictHostKeyChecking=no",
+               "-o", "ConnectTimeout=5",
+               "-o", "BatchMode=yes",
+               node, cmd])
+
+    if "---SEP---" not in out:
+        continue  # SSH failed or nvidia-smi not available
+
+    gpu_part, apps_part = out.split("---SEP---", 1)
+
+    # Parse GPU info: index -> {util_pct, uuid}
+    gpu_info = {}
+    for gline in gpu_part.strip().splitlines():
+        parts = [p.strip() for p in gline.split(",")]
+        if len(parts) < 3:
+            continue
+        try:
+            gpu_info[int(parts[0])] = {"util_pct": int(parts[1]), "uuid": parts[2]}
+        except ValueError:
+            continue
+
+    # UUIDs that have active compute processes
+    active_uuids = set()
+    for aline in apps_part.strip().splitlines():
+        parts = [p.strip() for p in aline.split(",")]
+        if parts and parts[0]:
+            active_uuids.add(parts[0])
+
+    uuid_to_idx = {v["uuid"]: k for k, v in gpu_info.items()}
+
+    for uuid in active_uuids:
+        idx = uuid_to_idx.get(uuid)
+        if idx is not None and gpu_info[idx]["util_pct"] == 0:
+            idle_allocated_gpus.append({
+                "node":      node,
+                "gpu_index": idx,
+                "util_pct":  0,
+                "users":     sorted(users),
+            })
+
+idle_allocated_gpus.sort(key=lambda x: (x["node"], x["gpu_index"]))
+
+print()
+if idle_allocated_gpus:
+    print(f"=== dkhasha1 idle-allocated GPUs: {len(idle_allocated_gpus)} ===")
+    print(f"{'NODE':<20} {'GPU':>4}  {'USERS'}")
+    print(f"{'-------------------':<20} {'---':>4}  {'-----'}")
+    for g in idle_allocated_gpus:
+        print(f"{g['node']:<20} {g['gpu_index']:>4}  {','.join(g['users'])}")
+else:
+    print("=== dkhasha1 idle-allocated GPUs: none ===")
+
+# ============================================================
 # Scratch space
 # ============================================================
 
@@ -274,6 +365,7 @@ report = {
         "total": grand,
     },
     "interactive_jobs": interactive_jobs,
+    "idle_allocated_gpus": idle_allocated_gpus,
     "scratch_space_total_tb": 100.0,
     "scratch_space_used_tb":  scratch_used_tb,
 }

@@ -22,6 +22,13 @@ export interface DSAIInteractiveJob {
   gpus: number;
 }
 
+export interface DSAIIdleGPU {
+  node: string;
+  gpu_index: number;
+  util_pct: number;
+  users: string[];
+}
+
 export interface DSAIStats {
   timestamp: string;
   server: "dsai";
@@ -38,6 +45,7 @@ export interface DSAIStats {
     total: number;
   };
   interactive_jobs: DSAIInteractiveJob[];
+  idle_allocated_gpus: DSAIIdleGPU[];
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }

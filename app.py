@@ -15,6 +15,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -212,6 +214,16 @@ async def get_history():
     return list(_history)
 
 
+# ---------------------------------------------------------------------------
+# Serve built frontend (must be after all API routes)
+# ---------------------------------------------------------------------------
+
+FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="spa")
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=443, reload=False)

@@ -1,7 +1,7 @@
 import { DSAIStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, Users, AlertCircle, HardDrive } from "lucide-react";
+import { Server, Users, AlertCircle, HardDrive, Moon } from "lucide-react";
 import { Progress } from "./ui/progress";
 
 interface DSAIServerCardProps {
@@ -147,6 +147,27 @@ export function DSAIServerCard({ stats }: DSAIServerCardProps) {
                 <span className="font-mono">{job.user}</span> - {job.partition} ({job.gpus} GPUs)
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Idle Allocated GPUs */}
+        {stats.idle_allocated_gpus?.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Moon className="h-4 w-4 text-amber-500" />
+              Idle Allocated GPUs
+              <Badge variant="outline" className="text-amber-600 border-amber-600 text-xs">
+                {stats.idle_allocated_gpus.length}
+              </Badge>
+            </h4>
+            <div className="space-y-1">
+              {stats.idle_allocated_gpus.map((g, i) => (
+                <div key={i} className="text-xs bg-amber-50 dark:bg-amber-950 p-2 rounded flex items-center justify-between">
+                  <span className="font-mono">{g.node} · GPU {g.gpu_index}</span>
+                  <span className="text-muted-foreground">{g.users.join(", ")}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
