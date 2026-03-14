@@ -8,7 +8,9 @@ uv.lock
 
 # Node
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ is intentionally tracked so servers without npm can run directly
+# Uncomment the next line to stop tracking the build artifact:
+# frontend/dist/
 frontend/package-lock.json
 
 # IDE

@@ -4,6 +4,8 @@ Runs the existing Python collector scripts via subprocess and exposes
 the results as a REST API. Results are cached for CACHE_TTL_SECONDS.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import subprocess

@@ -42,9 +42,21 @@ The dev frontend expects the backend at `localhost:8000`. Change `API_BASE` in `
 
 ## Prerequisites
 
-- Python 3.9+ with `fastapi`, `uvicorn`, `aiofiles` (`pip install -e .`)
-- Node.js 18+ with npm
-- SSH aliases `dsai`, `rockfish`, `ia1` configured in `~/.ssh/config`
+| Component | Minimum version | Notes |
+|-----------|----------------|-------|
+| Python    | 3.9            | 3.10+ recommended; 3.9 works via `from __future__ import annotations` |
+| Node.js   | 18             | Required by Vite 6; only needed to build the frontend |
+| npm       | 8              | Bundled with Node 18; not needed on server if `frontend/dist/` is pre-built |
+
+Python packages (install with `pip install -e .`):
+
+| Package   | Version |
+|-----------|---------|
+| fastapi   | ≥ 0.110 |
+| uvicorn   | ≥ 0.29  |
+| aiofiles  | ≥ 23.0  |
+
+SSH aliases `dsai`, `rockfish`, `ia1` must be configured in `~/.ssh/config` on the machine running the server.
 
 ## Features
 
