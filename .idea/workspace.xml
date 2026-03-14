@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="base URL.">
+    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="handle errors">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +59,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1773495951209</updated>
-      <workItem from="1773495952209" duration="15050000" />
+      <workItem from="1773495952209" duration="16792000" />
     </task>
     <task id="LOCAL-00001" summary="add python stats collectors.">
       <option name="closed" value="true" />
@@ -76,7 +77,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773512928063</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="handle errors">
+      <option name="closed" value="true" />
+      <created>1773513398892</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1773513398892</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -85,7 +94,19 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add python stats collectors." />
     <MESSAGE value="base URL." />
-    <option name="LAST_COMMIT_MESSAGE" value="base URL." />
+    <MESSAGE value="handle errors" />
+    <option name="LAST_COMMIT_MESSAGE" value="handle errors" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/danielgpus_ia1.py</url>
+          <line>136</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>

@@ -21,7 +21,7 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
             </CardHeader>
             <CardContent>
               <div className="h-[250px] flex items-center justify-center text-sm text-muted-foreground">
-                Collecting data — first chart point appears after the next backend poll (~15 min)
+                Collecting data — first chart point appears after the next backend poll (~30 min)
               </div>
             </CardContent>
           </Card>

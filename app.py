@@ -24,8 +24,8 @@ from fastapi.responses import FileResponse
 # Configuration
 # ---------------------------------------------------------------------------
 
-CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
-HISTORY_MAX_POINTS = 96     # 24 hours at 15-min intervals
+CACHE_TTL_SECONDS = 30 * 60  # 30 minutes
+HISTORY_MAX_POINTS = 48     # 24 hours at 30-min intervals
 
 SCRIPTS: dict[str, Path] = {
     "dsai": Path(__file__).parent / "danielgpus_dsai.py",

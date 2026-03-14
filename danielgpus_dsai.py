@@ -316,18 +316,32 @@ else:
 # Scratch space
 # ============================================================
 
-def get_scratch_space_tb(path):
-    out = run(["df", "-PBG", path])
-    for line in out.splitlines()[1:]:
-        parts = line.split()
-        if len(parts) >= 3:
-            total_gb = int(parts[1].rstrip("G"))
-            used_gb  = int(parts[2].rstrip("G"))
-            return round(total_gb / 1024, 1), round(used_gb / 1024, 1)
-    return 0, 0
+def parse_size_tb(s):
+    """Parse a size string like '68.75 TB' or '100.00 GB' into float TB."""
+    m = re.match(r"([\d.]+)\s*(TB|GB)", s.strip())
+    if not m:
+        return 0.0
+    val = float(m.group(1))
+    return val if m.group(2) == "TB" else round(val / 1024, 2)
 
-scratch_total_tb, scratch_used_tb = get_scratch_space_tb("/scratch/dkhasha1")
-print(f"Scratch /scratch/dkhasha1: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+
+def get_scratch_space_tb(fs_path="/scratch/dkhasha1/"):
+    """Parse scratch quota from quotas.py output (DSAI GPFS table)."""
+    out = run(["quotas.py"])
+    for line in out.splitlines():
+        cols = [c.strip() for c in line.split("|")]
+        cols = [c for c in cols if c]
+        if len(cols) >= 3 and cols[0] == fs_path:
+            return parse_size_tb(cols[2]), parse_size_tb(cols[1])  # total, used
+    return 0.0, 0.0
+
+
+try:
+    scratch_total_tb, scratch_used_tb = get_scratch_space_tb("/scratch/dkhasha1/")
+    print(f"Scratch /scratch/dkhasha1: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+except Exception as e:
+    scratch_total_tb, scratch_used_tb = None, None
+    print(f"Scratch /scratch/dkhasha1: unavailable ({e})")
 
 # ============================================================
 # JSON output
@@ -366,7 +380,7 @@ report = {
     },
     "interactive_jobs": interactive_jobs,
     "idle_allocated_gpus": idle_allocated_gpus,
-    "scratch_space_total_tb": 100.0,
+    "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,
 }
 
