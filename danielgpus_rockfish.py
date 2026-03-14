@@ -249,8 +249,12 @@ def get_scratch_space_tb(fs_name="scratch4"):
     return 0.0, 0.0
 
 
-scratch_total_tb, scratch_used_tb = get_scratch_space_tb("scratch4")
-print(f"Scratch scratch4: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+try:
+    scratch_total_tb, scratch_used_tb = get_scratch_space_tb("scratch4")
+    print(f"Scratch scratch4: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+except Exception as e:
+    scratch_total_tb, scratch_used_tb = None, None
+    print(f"Scratch scratch4: unavailable ({e})")
 
 # ============================================================
 # JSON output

@@ -59,14 +59,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!dsaiStats || !rockfishStats || !ia1Stats) {
+  const serverError = (dsaiStats as any)?.error || (rockfishStats as any)?.error || (ia1Stats as any)?.error;
+  if (!dsaiStats || !rockfishStats || !ia1Stats || serverError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          {fetchError ? (
+          {fetchError || serverError ? (
             <>
-              <p className="text-red-500 font-medium mb-2">{fetchError}</p>
-              <p className="text-sm text-muted-foreground">Run: <code>uvicorn app:app --reload --port 8000</code></p>
+              <p className="text-red-500 font-medium mb-2">{fetchError || serverError}</p>
             </>
           ) : (
             <>
