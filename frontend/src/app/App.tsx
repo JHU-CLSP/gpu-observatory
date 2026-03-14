@@ -5,7 +5,7 @@ import { IA1ServerCard } from "./components/IA1ServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
 import { DSAIStats, RockfishStats, IA1Stats, HistoricalDataPoint } from "./types/gpu-stats";
 
-const API_BASE = "";
+const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 import { Button } from "./components/ui/button";
 import { RefreshCw, Activity } from "lucide-react";
 import { Badge } from "./components/ui/badge";

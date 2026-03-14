@@ -1,18 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/gpu-stats-ia1-lab.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/danielgpus_dsai.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/danielgpus_dsai_h200b100.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/danielgpus_ia1.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/danielgpus_rockfish.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="add python stats collectors.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,11 +30,18 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "ai.playground.ignore.import.keys.banner.in.settings": "true",
     "git-widget-placeholder": "master",
+    "last_opened_file_path": "/Users/danielk/PycharmProjects/gpu-stats-ia1-lab",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -59,12 +57,25 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1773495951209</updated>
-      <workItem from="1773495952209" duration="4530000" />
+      <workItem from="1773495952209" duration="14408000" />
     </task>
+    <task id="LOCAL-00001" summary="add python stats collectors.">
+      <option name="closed" value="true" />
+      <created>1773501655749</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1773501655749</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add python stats collectors." />
+    <option name="LAST_COMMIT_MESSAGE" value="add python stats collectors." />
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
