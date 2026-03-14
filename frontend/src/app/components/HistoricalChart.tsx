@@ -8,6 +8,28 @@ interface HistoricalChartProps {
 }
 
 export function HistoricalChart({ data }: HistoricalChartProps) {
+  if (data.length === 0) {
+    return (
+      <div className="space-y-6">
+        {["DSAI Cluster", "Rockfish Cluster", "IA1 Node"].map((title) => (
+          <Card key={title} className="w-full">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>{title} - GPU Usage Over Time</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px] flex items-center justify-center text-sm text-muted-foreground">
+                Collecting data — first chart point appears after the next backend poll (~15 min)
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString("en-US", { 
@@ -20,13 +42,11 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
   const dsaiData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.dsai_team_usage,
-    "Total Usage": point.dsai_total_usage,
   }));
 
   const rockfishData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.rockfish_team_usage,
-    "Total Usage": point.rockfish_total_usage,
   }));
 
   const ia1Data = data.map((point) => ({
@@ -66,19 +86,11 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="Team Usage" 
-                stroke="#8b5cf6" 
+              <Line
+                type="monotone"
+                dataKey="Team Usage"
+                stroke="#8b5cf6"
                 strokeWidth={2}
-                dot={false}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="Total Usage" 
-                stroke="#a78bfa" 
-                strokeWidth={2}
-                strokeDasharray="5 5"
                 dot={false}
               />
             </LineChart>
@@ -115,19 +127,11 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="Team Usage" 
-                stroke="#3b82f6" 
+              <Line
+                type="monotone"
+                dataKey="Team Usage"
+                stroke="#3b82f6"
                 strokeWidth={2}
-                dot={false}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="Total Usage" 
-                stroke="#93c5fd" 
-                strokeWidth={2}
-                strokeDasharray="5 5"
                 dot={false}
               />
             </LineChart>

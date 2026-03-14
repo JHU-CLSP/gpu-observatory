@@ -4,7 +4,6 @@ import { RockfishServerCard } from "./components/RockfishServerCard";
 import { IA1ServerCard } from "./components/IA1ServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
 import { DSAIStats, RockfishStats, IA1Stats, HistoricalDataPoint } from "./types/gpu-stats";
-import { generateHistoricalData } from "./utils/mock-data";
 
 const API_BASE = "http://localhost:8000";
 import { Button } from "./components/ui/button";
@@ -15,21 +14,23 @@ export default function App() {
   const [dsaiStats, setDsaiStats] = useState<DSAIStats | null>(null);
   const [rockfishStats, setRockfishStats] = useState<RockfishStats | null>(null);
   const [ia1Stats, setIa1Stats] = useState<IA1Stats | null>(null);
-  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>(generateHistoricalData(24));
+  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
-      const [dsai, rockfish, ia1] = await Promise.all([
+      const [dsai, rockfish, ia1, history] = await Promise.all([
         fetch(`${API_BASE}/stats/dsai`).then(r => r.json()),
         fetch(`${API_BASE}/stats/rockfish`).then(r => r.json()),
         fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
+        fetch(`${API_BASE}/stats/history`).then(r => r.json()),
       ]);
       setDsaiStats(dsai);
       setRockfishStats(rockfish);
       setIa1Stats(ia1);
+      setHistoricalData(history);
       setLastUpdate(new Date());
       setFetchError(null);
     } catch (err) {
@@ -55,15 +56,6 @@ export default function App() {
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update historical data every minute
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHistoricalData(generateHistoricalData(24));
-    }, 60000);
-
     return () => clearInterval(interval);
   }, []);
 

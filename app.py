@@ -8,7 +8,9 @@ import asyncio
 import json
 import subprocess
 import time
+from collections import deque
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -19,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # ---------------------------------------------------------------------------
 
 CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+HISTORY_MAX_POINTS = 96     # 24 hours at 15-min intervals
 
 SCRIPTS: dict[str, Path] = {
     "dsai": Path(__file__).parent / "danielgpus_dsai.py",
@@ -31,6 +34,35 @@ SCRIPTS: dict[str, Path] = {
 # ---------------------------------------------------------------------------
 
 _cache: dict[str, dict] = {}
+
+# ---------------------------------------------------------------------------
+# History buffer  — circular buffer of HistoricalDataPoint dicts
+# ---------------------------------------------------------------------------
+
+_history: deque[dict] = deque(maxlen=HISTORY_MAX_POINTS)
+
+
+def _snapshot_to_history_point() -> dict | None:
+    """Build a HistoricalDataPoint from the current cache. Returns None if any
+    server is missing or errored."""
+    dsai = _cache.get("dsai", {}).get("data", {})
+    rockfish = _cache.get("rockfish", {}).get("data", {})
+    ia1 = _cache.get("ia1", {}).get("data", {})
+
+    if not dsai or not rockfish or not ia1:
+        return None
+    if dsai.get("error") or rockfish.get("error") or ia1.get("error"):
+        return None
+
+    return {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "dsai_team_usage": dsai.get("dkhasha1_totals", {}).get("total", 0),
+        "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0),
+        "rockfish_team_usage": rockfish.get("dkhasha1_totals", {}).get("total", 0),
+        "rockfish_total_usage": rockfish.get("partition_totals", {}).get("used", 0),
+        "ia1_active": ia1.get("summary", {}).get("active_gpus", 0),
+        "ia1_allocated": ia1.get("summary", {}).get("allocated_gpus", 0),
+    }
 
 
 def _is_stale(server: str) -> bool:
@@ -84,6 +116,9 @@ async def _background_refresh_loop():
             await _fetch_server(server)
             # Small delay between servers to avoid hammering SSH concurrently
             await asyncio.sleep(2)
+        point = _snapshot_to_history_point()
+        if point:
+            _history.append(point)
         await asyncio.sleep(CACHE_TTL_SECONDS)
 
 
@@ -159,6 +194,9 @@ async def refresh_all():
         _fetch_server("rockfish"),
         _fetch_server("ia1"),
     )
+    point = _snapshot_to_history_point()
+    if point:
+        _history.append(point)
     return {"dsai": results[0], "rockfish": results[1], "ia1": results[2]}
 
 
@@ -167,6 +205,11 @@ async def refresh_server(server: str):
     if server not in SCRIPTS:
         raise HTTPException(status_code=404, detail=f"Unknown server: {server}")
     return await _fetch_server(server)
+
+
+@app.get("/stats/history")
+async def get_history():
+    return list(_history)
 
 
 if __name__ == "__main__":
