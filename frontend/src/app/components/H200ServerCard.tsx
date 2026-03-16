@@ -1,4 +1,4 @@
-import { DSAIStats } from "../types/gpu-stats";
+import { DSAIStats, H200PendingJob } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Cpu, Clock } from "lucide-react";
@@ -74,24 +74,6 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
           </div>
         )}
 
-        {/* Pending bottleneck hint */}
-        {h200.pending_summary.job_count > 0 && h200.total_gpus_available > 0 && (
-          <div className={`text-xs rounded p-2 flex items-center gap-2 ${
-            teamPct >= 100
-              ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
-              : clusterPct >= 100
-              ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
-              : "bg-gray-50 dark:bg-gray-800 text-muted-foreground"
-          }`}>
-            <span>
-              {teamPct >= 100
-                ? "Jobs pending: team limit reached (cluster has free GPUs)"
-                : clusterPct >= 100
-                ? "Jobs pending: cluster is full"
-                : "Jobs pending: waiting on priority / resources"}
-            </span>
-          </div>
-        )}
 
         {/* Running jobs */}
         <div className="space-y-3">
@@ -127,23 +109,28 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
         </div>
 
         {/* Pending queue (team only) */}
-        {h200.pending_summary.job_count > 0 && (
+        {h200.pending_jobs.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold flex items-center gap-2">
               <Clock className="h-4 w-4 text-purple-500" />
               Pending Queue
               <Badge variant="outline" className="text-purple-600 border-purple-600 text-xs">
-                {h200.pending_summary.job_count} jobs · {h200.pending_summary.total_gpus_requested} GPUs
+                {h200.pending_jobs.length} jobs · {h200.pending_summary.total_gpus_requested} GPUs
               </Badge>
             </h4>
             <div className="space-y-1">
-              {h200.pending_summary.by_user.map((u) => (
+              {(h200.pending_jobs as H200PendingJob[]).map((job) => (
                 <div
-                  key={u.user}
+                  key={job.jobid}
                   className="text-xs bg-purple-50 dark:bg-purple-950 p-2 rounded flex items-center justify-between"
                 >
-                  <span className="font-mono">{u.user}</span>
-                  <span className="text-muted-foreground">{u.gpus_requested} GPUs queued</span>
+                  <span className="font-mono">{job.user}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{job.gpus_requested} GPUs</span>
+                    {job.reason && (
+                      <span className="text-purple-600 dark:text-purple-400">{job.reason}</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

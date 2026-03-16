@@ -414,11 +414,11 @@ for line in h200_run_out.splitlines():
     if account == "dkhasha1":
         h200_team_gpus_used += gpus
 
-# Pending jobs for dkhasha1 on h200
+# Pending jobs for dkhasha1 on h200 (include SLURM reason)
 h200_pend_out = run([
     "squeue", "-p", "h200", "-t", "PD",
     "--account=dkhasha1",
-    "-O", "JobID:12,UserName:20,tres-req:100",
+    "-O", "JobID:12,UserName:20,tres-req:100,Reason:40",
     "--noheader",
 ])
 
@@ -429,14 +429,15 @@ for line in h200_pend_out.splitlines():
     fields = line.split()
     if len(fields) < 2:
         continue
-    jobid = fields[0].strip()
-    user  = fields[1].strip()
-    tres  = fields[2].strip() if len(fields) > 2 else ""
+    jobid  = fields[0].strip()
+    user   = fields[1].strip()
+    tres   = fields[2].strip() if len(fields) > 2 else ""
+    reason = fields[3].strip() if len(fields) > 3 else ""
 
     m = re.search(r"gres/gpu=(\d+)", tres)
     gpus = int(m.group(1)) if m else 0
 
-    h200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus})
+    h200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus, "reason": reason})
     h200_pending_user_gpus[user] += gpus
 
 h200_total_pending_gpus = sum(h200_pending_user_gpus.values())

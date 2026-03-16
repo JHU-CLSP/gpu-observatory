@@ -42,13 +42,20 @@ export interface H200RunningJob {
   gpus: number;
 }
 
+export interface H200PendingJob {
+  jobid: string;
+  user: string;
+  gpus_requested: number;
+  reason: string;
+}
+
 export interface H200Stats {
   team_limit: number;
   team_gpus_used: number;
   total_gpus_used: number;
   total_gpus_available: number;
   running_jobs: H200RunningJob[];
-  pending_jobs: PendingJob[];
+  pending_jobs: H200PendingJob[];
   pending_summary: PendingSummary;
 }
 
