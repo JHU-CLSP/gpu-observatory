@@ -5,6 +5,14 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   base: '/port5000/',
+  server: {
+    proxy: {
+      '/port5000/stats': {
+        target: 'http://localhost:8000',
+        rewrite: (path) => path.replace(/^\/port5000/, ''),
+      },
+    },
+  },
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them

@@ -32,6 +32,16 @@ npm install
 
 ## Running
 
+### Production (single command)
+
+```bash
+./run.sh
+```
+
+Builds the frontend (skipped if `frontend/dist/` already exists) and serves everything on **http://localhost:5000**. Pass `--rebuild` to force a fresh frontend build.
+
+### Development (hot reload)
+
 Open two terminals.
 
 **Terminal 1 — backend** (port 8000):
