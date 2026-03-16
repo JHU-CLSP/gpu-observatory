@@ -193,10 +193,10 @@ for line in pending_out.splitlines():
     tres  = fields[3].strip() if len(fields) > 3 else ""
 
     m = re.search(r"gres/gpu=(\d+)", tres)
-    gpus = int(m.group(1)) if m else 0
+    gpus_requested = int(m.group(1)) if m else 0
 
-    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus})
-    pending_user_gpus[user] += gpus
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus_requested})
+    pending_user_gpus[user] += gpus_requested
 
 total_pending_gpus = sum(pending_user_gpus.values())
 
