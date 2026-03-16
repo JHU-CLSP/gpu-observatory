@@ -404,11 +404,13 @@ for line in h200_run_out.splitlines():
     if account == "dkhasha1":
         h200_team_gpus_used += gpus
 
-# Pending jobs for dkhasha1 on h200 (include SLURM reason)
+# Pending jobs for dkhasha1 on h200.
+# Use pipe-delimited short format: %b gives the gres binding (e.g. gpu:h200:8),
+# which is more reliable than tres-req for GPU counts on pending jobs.
 h200_pend_out = run([
     "squeue", "-p", "h200", "-t", "PD",
     "--account=dkhasha1",
-    "-O", "JobID:12,UserName:20,tres-req:100,Reason:40",
+    "-o", "%i|%u|%b|%r",
     "--noheader",
 ])
 
@@ -416,16 +418,16 @@ h200_pending_jobs = []
 h200_pending_user_gpus = defaultdict(int)
 
 for line in h200_pend_out.splitlines():
-    fields = line.split()
-    if len(fields) < 2:
+    parts = line.split("|")
+    if len(parts) < 2:
         continue
-    jobid  = fields[0].strip()
-    user   = fields[1].strip()
-    tres   = fields[2].strip() if len(fields) > 2 else ""
-    reason = fields[3].strip() if len(fields) > 3 else ""
+    jobid  = parts[0].strip()
+    user   = parts[1].strip()
+    gres   = parts[2].strip() if len(parts) > 2 else ""   # e.g. "gpu:h200:8"
+    reason = parts[3].strip() if len(parts) > 3 else ""
 
-    # Handle both gres/gpu=N and gres/gpu:h200=N (named GPU type)
-    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
+    # gres binding format: "gpu:h200:8" or "gpu:8"
+    m = re.search(r"gpu(?::[^:,\s]+)*:(\d+)", gres)
     gpus = int(m.group(1)) if m else 0
 
     h200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus, "reason": reason})
