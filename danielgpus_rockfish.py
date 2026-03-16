@@ -253,10 +253,11 @@ for line in pending_out.splitlines():
     gres   = parts[3].strip() if len(parts) > 3 else ""
     reason = parts[4].strip() if len(parts) > 4 else ""
 
-    m = re.search(r"gpu(?::[^:,\s]+)*:(\d+)", gres)
-    gpus = int(m.group(1)) if m else 0
+    m = re.search(r"gpu:(?:([^:,\s\d][^:,\s]*):)?(\d+)", gres)
+    gpu_type = m.group(1).upper() if m and m.group(1) else ""
+    gpus = int(m.group(2)) if m else 0
 
-    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "reason": reason})
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason})
     pending_user_gpus[user] += gpus
 
 total_pending_gpus = sum(pending_user_gpus.values())

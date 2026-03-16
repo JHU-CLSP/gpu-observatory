@@ -158,7 +158,7 @@ export function IA1ServerCard({ stats }: IA1ServerCardProps) {
                 <div key={job.jobid} className="text-xs bg-purple-50 dark:bg-purple-950/40 p-2 rounded flex items-center justify-between">
                   <span className="font-mono">{job.user}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{job.gpus_requested} GPUs</span>
+                    <span className="text-muted-foreground">{job.gpu_type ? `${job.gpus_requested}× ${job.gpu_type}` : `${job.gpus_requested} GPUs`}</span>
                     {job.reason && <PendingReason reason={job.reason} />}
                   </div>
                 </div>
