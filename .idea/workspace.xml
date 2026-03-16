@@ -1,19 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="fix.">
+    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="upd">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/danielgpus_dsai.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_dsai.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/danielgpus_ia1.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_ia1.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/danielgpus_rockfish.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_rockfish.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/IA1ServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/IA1ServerCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/RockfishServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/RockfishServerCard.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,7 +62,9 @@
       <updated>1773495951209</updated>
       <workItem from="1773495952209" duration="19633000" />
       <workItem from="1773620141945" duration="1215000" />
-      <workItem from="1773621459985" duration="350000" />
+      <workItem from="1773621459985" duration="3281000" />
+      <workItem from="1773662778557" duration="1751000" />
+      <workItem from="1773672812484" duration="4988000" />
     </task>
     <task id="LOCAL-00001" summary="add python stats collectors.">
       <option name="closed" value="true" />
@@ -120,7 +114,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773517997960</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Also show &quot;pending&quot; jobs.">
+      <option name="closed" value="true" />
+      <created>1773622124888</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1773622124888</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -132,7 +134,8 @@
     <MESSAGE value="handle errors" />
     <MESSAGE value="update." />
     <MESSAGE value="fix." />
-    <option name="LAST_COMMIT_MESSAGE" value="fix." />
+    <MESSAGE value="Also show &quot;pending&quot; jobs." />
+    <option name="LAST_COMMIT_MESSAGE" value="Also show &quot;pending&quot; jobs." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

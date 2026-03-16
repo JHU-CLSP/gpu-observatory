@@ -455,6 +455,33 @@ if h200_pending_jobs:
 print()
 
 # ============================================================
+# Section 7: Cluster-wide GPU usage by account
+# ============================================================
+
+all_accounts_out = run([
+    "squeue", "-t", "R",
+    "-O", "Account:40,Partition:15,tres-alloc:100",
+    "--noheader",
+])
+
+cluster_account_gpus = defaultdict(lambda: defaultdict(int))
+for line in all_accounts_out.splitlines():
+    fields = line.split()
+    if len(fields) < 3:
+        continue
+    account = fields[0].strip()
+    part    = fields[1].strip().rstrip("*")
+    tres    = fields[2].strip()
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    if m:
+        cluster_account_gpus[account][part] += int(m.group(1))
+
+def acct_total(a):
+    return sum(cluster_account_gpus[a].values())
+
+sorted_accounts = sorted(cluster_account_gpus, key=acct_total, reverse=True)
+
+# ============================================================
 # Scratch space
 # ============================================================
 
@@ -548,6 +575,14 @@ report = {
             ],
         },
     },
+    "cluster_account_usage": [
+        {
+            "account": a,
+            "gpus": dict(cluster_account_gpus[a]),
+            "total": acct_total(a),
+        }
+        for a in sorted_accounts if acct_total(a) > 0
+    ],
     "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,
 }

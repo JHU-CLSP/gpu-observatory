@@ -1,7 +1,7 @@
 import { DSAIStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, Users, AlertCircle, HardDrive, Moon, Clock } from "lucide-react";
+import { Server, Users, AlertCircle, HardDrive, Moon, Clock, BarChart2 } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 
@@ -129,6 +129,37 @@ export function DSAIServerCard({ stats }: DSAIServerCardProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* GPU Usage by Account */}
+        {stats.cluster_account_usage && stats.cluster_account_usage.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-blue-500" />
+              GPU Usage by Account
+            </h4>
+            <div className="space-y-1">
+              {stats.cluster_account_usage.map((entry) => {
+                const pct = (entry.total / stats.partition_totals.used) * 100;
+                const isTeam = entry.account === "dkhasha1";
+                return (
+                  <div key={entry.account}
+                    className={`text-xs p-2 rounded space-y-1 ${isTeam ? "bg-blue-50 dark:bg-blue-950/40" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`font-mono ${isTeam ? "font-semibold" : ""}`}>{entry.account}</span>
+                      <div className="flex items-center gap-2">
+                        {Object.entries(entry.gpus).map(([p, c]) => (
+                          <Badge key={p} variant="secondary" className="text-xs">{p}: {c}</Badge>
+                        ))}
+                        <span className="font-bold">{entry.total} GPUs</span>
+                      </div>
+                    </div>
+                    <Progress value={pct} className="h-1" />
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

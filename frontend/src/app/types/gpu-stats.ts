@@ -74,6 +74,12 @@ export interface DSAIIdleGPU {
   users: string[];
 }
 
+export interface DSAIAccountUsage {
+  account: string;
+  gpus: Record<string, number>;
+  total: number;
+}
+
 export interface DSAIStats {
   timestamp: string;
   server: "dsai";
@@ -94,6 +100,7 @@ export interface DSAIStats {
   pending_jobs: PendingJob[];
   dkhasha1_pending: PendingSummary;
   h200?: H200Stats;
+  cluster_account_usage?: DSAIAccountUsage[];
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }
