@@ -64,13 +64,32 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
         {h200.total_gpus_available > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>Total Partition Usage</span>
+              <span>Cluster Utilization (all users)</span>
               <span className="font-bold">
                 {h200.total_gpus_used} / {h200.total_gpus_available} GPUs
               </span>
             </div>
             <Progress value={clusterPct} className="h-2" />
-            <p className="text-xs text-muted-foreground">{clusterPct.toFixed(1)}% utilized</p>
+            <p className="text-xs text-muted-foreground">{clusterPct.toFixed(1)}% utilized across all accounts</p>
+          </div>
+        )}
+
+        {/* Pending bottleneck hint */}
+        {h200.pending_summary.job_count > 0 && h200.total_gpus_available > 0 && (
+          <div className={`text-xs rounded p-2 flex items-center gap-2 ${
+            teamPct >= 100
+              ? "bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
+              : clusterPct >= 100
+              ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
+              : "bg-gray-50 dark:bg-gray-800 text-muted-foreground"
+          }`}>
+            <span>
+              {teamPct >= 100
+                ? "Jobs pending: team limit reached (cluster has free GPUs)"
+                : clusterPct >= 100
+                ? "Jobs pending: cluster is full"
+                : "Jobs pending: waiting on priority / resources"}
+            </span>
           </div>
         )}
 
