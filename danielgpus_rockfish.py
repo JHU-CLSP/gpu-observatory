@@ -23,6 +23,7 @@ if os.environ.get("_GPUSTATS_ON_REMOTE") != "1":
     ).returncode)
 
 PARTITIONS = ["a100", "ica100", "l40s", "v100"]
+TEAM_ACCOUNTS = ["danielk_gpu", "danielk", "danielk80_gpu", "dk-clsp_gpu"]
 
 
 def run(cmd):
@@ -133,7 +134,7 @@ users_seen = []
 squeue_out = run([
     "squeue",
     "-O", "JobID:12,UserName:20,Partition:15,tres-alloc:100,Account:20",
-    "--account=dkhasha1",
+    "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "R",
     "--noheader",
 ])
@@ -198,7 +199,7 @@ INTERACTIVE_NAMES = {"bash", "sh", "zsh", "fish", "interactive",
 iqueue_out = run([
     "squeue",
     "-O", "JobID:12,UserName:20,Partition:10,Name:40,tres-alloc:100",
-    "--account=dkhasha1",
+    "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "R",
     "--noheader",
 ])
@@ -235,7 +236,7 @@ print()
 pending_out = run([
     "squeue",
     "-o", "%i|%u|%P|%b|%r",
-    "--account=dkhasha1",
+    "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "PD",
     "--noheader",
 ])
