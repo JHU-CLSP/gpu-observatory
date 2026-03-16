@@ -16,7 +16,7 @@ export const SLURM_REASON: Record<string, { label: string; detail: string }> = {
   PartitionTimeLimit:     { label: "Time limit",          detail: "Requested walltime exceeds the partition limit" },
   QOSMaxWallDurationPerJob: { label: "Walltime limit",   detail: "Requested walltime exceeds the QOS maximum" },
   JobArrayTaskLimit:      { label: "Array task limit",    detail: "Maximum concurrent array tasks reached" },
-  launch failed requeued held: { label: "Launch failed", detail: "Job failed to launch and was re-queued in held state" },
+  "launch failed requeued held": { label: "Launch failed", detail: "Job failed to launch and was re-queued in held state" },
 };
 
 export function PendingReason({ reason }: { reason: string }) {
