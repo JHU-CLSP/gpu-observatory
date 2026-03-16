@@ -34,7 +34,8 @@ def run(cmd):
 # Section 1: Idle GPUs per partition
 # ============================================================
 
-# Map nodes to partitions via sinfo
+# Map nodes to partitions via sinfo.
+# h200 is queried separately because it is not in the default sinfo output.
 node_partition = {}
 sinfo_out = run([
     "sinfo", "-N",
@@ -51,6 +52,14 @@ for line in sinfo_out.splitlines():
     part = parts[1].strip().rstrip("*")
     if node not in seen:
         node_partition[node] = part
+        seen.add(node)
+
+# Add H200 nodes so the scontrol loop below tracks them too
+h200_nodes_out = run(["sinfo", "-p", "h200", "-N", "-o", "%N", "--noheader"])
+for line in h200_nodes_out.splitlines():
+    node = line.strip()
+    if node and node not in seen:
+        node_partition[node] = "h200"
         seen.add(node)
 
 part_total = defaultdict(int)
@@ -364,27 +373,7 @@ print()
 
 H200_TEAM_LIMIT = 24
 
-# Total / available GPUs per node in the h200 partition
-h200_sinfo_out = run([
-    "sinfo", "-p", "h200", "-N",
-    "-o", "%N|%G|%t",
-    "--noheader",
-])
-
-h200_total_gpus = 0
-for line in h200_sinfo_out.splitlines():
-    parts = line.split("|")
-    if len(parts) < 3:
-        continue
-    gres_str = parts[1].strip()   # e.g. "gpu:h200:8(S:0-1)"
-    state    = parts[2].strip()
-    if re.search(r"down|drain|not_resp|maint", state, re.IGNORECASE):
-        continue
-    m = re.search(r"gpu:[^,()\s]*", gres_str)
-    if m:
-        cnt = re.search(r"\d+$", m.group())
-        if cnt:
-            h200_total_gpus += int(cnt.group())
+# GPU totals for h200 come from the scontrol loop above (part_total["h200"] etc.)
 
 # All running jobs on h200 (any account)
 h200_run_out = run([
@@ -406,7 +395,8 @@ for line in h200_run_out.splitlines():
     account = fields[2].strip()
     tres    = fields[3].strip() if len(fields) > 3 else ""
 
-    m = re.search(r"gres/gpu=(\d+)", tres)
+    # Handle both gres/gpu=N and gres/gpu:h200=N (named GPU type)
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     gpus = int(m.group(1)) if m else 0
 
     h200_running_jobs.append({"jobid": jobid, "user": user, "account": account, "gpus": gpus})
@@ -434,7 +424,8 @@ for line in h200_pend_out.splitlines():
     tres   = fields[2].strip() if len(fields) > 2 else ""
     reason = fields[3].strip() if len(fields) > 3 else ""
 
-    m = re.search(r"gres/gpu=(\d+)", tres)
+    # Handle both gres/gpu=N and gres/gpu:h200=N (named GPU type)
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     gpus = int(m.group(1)) if m else 0
 
     h200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus, "reason": reason})
@@ -443,7 +434,7 @@ for line in h200_pend_out.splitlines():
 h200_total_pending_gpus = sum(h200_pending_user_gpus.values())
 
 print()
-print(f"=== H200: team {h200_team_gpus_used}/{H200_TEAM_LIMIT} GPUs  |  cluster {h200_total_gpus_used}/{h200_total_gpus} GPUs ===")
+print(f"=== H200: team {h200_team_gpus_used}/{H200_TEAM_LIMIT} GPUs  |  cluster {h200_total_gpus_used}/{part_total['h200']} GPUs ===")
 if h200_running_jobs:
     print(f"{'USER':<15} {'JOB ID':>10} {'ACCOUNT':<15} {'GPUS':>6}")
     print(f"{'-------------':<15} {'------':>10} {'-------------':<15} {'-----':>6}")
@@ -533,8 +524,8 @@ report = {
     "h200": {
         "team_limit": H200_TEAM_LIMIT,
         "team_gpus_used": h200_team_gpus_used,
-        "total_gpus_used": h200_total_gpus_used,
-        "total_gpus_available": h200_total_gpus,
+        "total_gpus_used": part_alloc["h200"],
+        "total_gpus_available": part_total["h200"],
         "running_jobs": h200_running_jobs,
         "pending_jobs": h200_pending_jobs,
         "pending_summary": {

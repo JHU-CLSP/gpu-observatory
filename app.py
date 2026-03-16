@@ -64,6 +64,7 @@ def _snapshot_to_history_point() -> dict | None:
         "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0),
         "dsai_pending_gpus": dsai.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
         "dsai_h200_team_usage": dsai.get("h200", {}).get("team_gpus_used", 0),
+        "dsai_h200_total_usage": dsai.get("h200", {}).get("total_gpus_used", 0),
         "rockfish_team_usage": rockfish.get("dkhasha1_totals", {}).get("total", 0),
         "rockfish_total_usage": rockfish.get("partition_totals", {}).get("used", 0),
         "rockfish_pending_gpus": rockfish.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),

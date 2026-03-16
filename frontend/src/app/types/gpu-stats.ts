@@ -165,6 +165,7 @@ export interface HistoricalDataPoint {
   dsai_total_usage: number;
   dsai_pending_gpus: number;
   dsai_h200_team_usage: number;
+  dsai_h200_total_usage: number;
   rockfish_team_usage: number;
   rockfish_total_usage: number;
   rockfish_pending_gpus: number;

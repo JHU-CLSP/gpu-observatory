@@ -180,7 +180,7 @@ export default function App() {
         </div>
 
         {/* Server Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DSAIServerCard stats={dsaiStats} />
           <H200ServerCard stats={dsaiStats} />
           <RockfishServerCard stats={rockfishStats} />
