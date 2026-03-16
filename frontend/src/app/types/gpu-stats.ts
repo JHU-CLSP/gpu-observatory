@@ -35,6 +35,23 @@ export interface PendingSummary {
   by_user: { user: string; gpus_requested: number }[];
 }
 
+export interface H200RunningJob {
+  jobid: string;
+  user: string;
+  account: string;
+  gpus: number;
+}
+
+export interface H200Stats {
+  team_limit: number;
+  team_gpus_used: number;
+  total_gpus_used: number;
+  total_gpus_available: number;
+  running_jobs: H200RunningJob[];
+  pending_jobs: PendingJob[];
+  pending_summary: PendingSummary;
+}
+
 export interface DSAIIdleGPU {
   node: string;
   gpu_index: number;
@@ -61,6 +78,7 @@ export interface DSAIStats {
   idle_allocated_gpus: DSAIIdleGPU[];
   pending_jobs: PendingJob[];
   dkhasha1_pending: PendingSummary;
+  h200?: H200Stats;
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }
@@ -139,6 +157,7 @@ export interface HistoricalDataPoint {
   dsai_team_usage: number;
   dsai_total_usage: number;
   dsai_pending_gpus: number;
+  dsai_h200_team_usage: number;
   rockfish_team_usage: number;
   rockfish_total_usage: number;
   rockfish_pending_gpus: number;

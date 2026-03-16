@@ -44,6 +44,7 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
   const dsaiData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.dsai_team_usage,
+    "H200 Team": point.dsai_h200_team_usage,
     "Pending": point.dsai_pending_gpus,
   }));
 
@@ -95,6 +96,13 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 type="monotone"
                 dataKey="Team Usage"
                 stroke="#8b5cf6"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="H200 Team"
+                stroke="#0d9488"
                 strokeWidth={2}
                 dot={false}
               />

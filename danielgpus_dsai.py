@@ -357,6 +357,102 @@ if pending_jobs:
 print()
 
 # ============================================================
+# Section 6: H200 partition
+# Not visible in default sinfo; queried explicitly via -p h200.
+# Team allocation limit: 24 GPUs.
+# ============================================================
+
+H200_TEAM_LIMIT = 24
+
+# Total / available GPUs per node in the h200 partition
+h200_sinfo_out = run([
+    "sinfo", "-p", "h200", "-N",
+    "-o", "%N|%G|%t",
+    "--noheader",
+])
+
+h200_total_gpus = 0
+for line in h200_sinfo_out.splitlines():
+    parts = line.split("|")
+    if len(parts) < 3:
+        continue
+    gres_str = parts[1].strip()   # e.g. "gpu:h200:8(S:0-1)"
+    state    = parts[2].strip()
+    if re.search(r"down|drain|not_resp|maint", state, re.IGNORECASE):
+        continue
+    m = re.search(r"gpu:[^,()\s]*", gres_str)
+    if m:
+        cnt = re.search(r"\d+$", m.group())
+        if cnt:
+            h200_total_gpus += int(cnt.group())
+
+# All running jobs on h200 (any account)
+h200_run_out = run([
+    "squeue", "-p", "h200", "-t", "R",
+    "-O", "JobID:12,UserName:20,Account:20,tres-alloc:100",
+    "--noheader",
+])
+
+h200_running_jobs = []
+h200_team_gpus_used = 0
+h200_total_gpus_used = 0
+
+for line in h200_run_out.splitlines():
+    fields = line.split()
+    if len(fields) < 3:
+        continue
+    jobid   = fields[0].strip()
+    user    = fields[1].strip()
+    account = fields[2].strip()
+    tres    = fields[3].strip() if len(fields) > 3 else ""
+
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    gpus = int(m.group(1)) if m else 0
+
+    h200_running_jobs.append({"jobid": jobid, "user": user, "account": account, "gpus": gpus})
+    h200_total_gpus_used += gpus
+    if account == "dkhasha1":
+        h200_team_gpus_used += gpus
+
+# Pending jobs for dkhasha1 on h200
+h200_pend_out = run([
+    "squeue", "-p", "h200", "-t", "PD",
+    "--account=dkhasha1",
+    "-O", "JobID:12,UserName:20,tres-req:100",
+    "--noheader",
+])
+
+h200_pending_jobs = []
+h200_pending_user_gpus = defaultdict(int)
+
+for line in h200_pend_out.splitlines():
+    fields = line.split()
+    if len(fields) < 2:
+        continue
+    jobid = fields[0].strip()
+    user  = fields[1].strip()
+    tres  = fields[2].strip() if len(fields) > 2 else ""
+
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    gpus = int(m.group(1)) if m else 0
+
+    h200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus})
+    h200_pending_user_gpus[user] += gpus
+
+h200_total_pending_gpus = sum(h200_pending_user_gpus.values())
+
+print()
+print(f"=== H200: team {h200_team_gpus_used}/{H200_TEAM_LIMIT} GPUs  |  cluster {h200_total_gpus_used}/{h200_total_gpus} GPUs ===")
+if h200_running_jobs:
+    print(f"{'USER':<15} {'JOB ID':>10} {'ACCOUNT':<15} {'GPUS':>6}")
+    print(f"{'-------------':<15} {'------':>10} {'-------------':<15} {'-----':>6}")
+    for j in sorted(h200_running_jobs, key=lambda x: x["user"]):
+        print(f"{j['user']:<15} {j['jobid']:>10} {j['account']:<15} {j['gpus']:>6}")
+if h200_pending_jobs:
+    print(f"  Pending (dkhasha1): {len(h200_pending_jobs)} jobs, {h200_total_pending_gpus} GPUs queued")
+print()
+
+# ============================================================
 # Scratch space
 # ============================================================
 
@@ -432,6 +528,22 @@ report = {
             {"user": u, "gpus_requested": g}
             for u, g in sorted(pending_user_gpus.items(), key=lambda x: -x[1])
         ],
+    },
+    "h200": {
+        "team_limit": H200_TEAM_LIMIT,
+        "team_gpus_used": h200_team_gpus_used,
+        "total_gpus_used": h200_total_gpus_used,
+        "total_gpus_available": h200_total_gpus,
+        "running_jobs": h200_running_jobs,
+        "pending_jobs": h200_pending_jobs,
+        "pending_summary": {
+            "job_count": len(h200_pending_jobs),
+            "total_gpus_requested": h200_total_pending_gpus,
+            "by_user": [
+                {"user": u, "gpus_requested": g}
+                for u, g in sorted(h200_pending_user_gpus.items(), key=lambda x: -x[1])
+            ],
+        },
     },
     "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,

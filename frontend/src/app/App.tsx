@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { DSAIServerCard } from "./components/DSAIServerCard";
+import { H200ServerCard } from "./components/H200ServerCard";
 import { RockfishServerCard } from "./components/RockfishServerCard";
 import { IA1ServerCard } from "./components/IA1ServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
@@ -117,7 +118,7 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">DSAI Team Usage</div>
             <div className="text-3xl font-bold text-purple-600">
@@ -131,6 +132,17 @@ export default function App() {
                   {dsaiStats.idle_allocated_gpus.length} idle allocated
                 </Badge>
               )}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+            <div className="text-sm text-muted-foreground mb-2">H200 Condo Usage</div>
+            <div className="text-3xl font-bold text-teal-600">
+              {dsaiStats.h200?.team_gpus_used ?? 0}
+              <span className="text-lg text-muted-foreground"> / {dsaiStats.h200?.team_limit ?? 24}</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              {(((dsaiStats.h200?.team_gpus_used ?? 0) / (dsaiStats.h200?.team_limit ?? 24)) * 100).toFixed(1)}% of condo allocation
             </div>
           </div>
 
@@ -168,8 +180,9 @@ export default function App() {
         </div>
 
         {/* Server Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
           <DSAIServerCard stats={dsaiStats} />
+          <H200ServerCard stats={dsaiStats} />
           <RockfishServerCard stats={rockfishStats} />
           <IA1ServerCard stats={ia1Stats} />
         </div>
