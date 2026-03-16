@@ -99,18 +99,18 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
         </div>
 
         {/* Cluster utilisation */}
-        {h200.total_gpus_available > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>Cluster Utilization (all users)</span>
-              <span className="font-bold">
-                {h200.total_gpus_used} / {h200.total_gpus_available} GPUs
-              </span>
-            </div>
-            <Progress value={clusterPct} className="h-2" />
-            <p className="text-xs text-muted-foreground">{clusterPct.toFixed(1)}% utilized across all accounts</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Cluster Utilization (all users)</span>
+            <span className="font-bold">
+              {h200.total_gpus_used} / {h200.total_gpus_available > 0 ? h200.total_gpus_available : "?"} GPUs
+            </span>
           </div>
-        )}
+          {h200.total_gpus_available > 0 && <Progress value={clusterPct} className="h-2" />}
+          <p className="text-xs text-muted-foreground">
+            {h200.total_gpus_available > 0 ? `${clusterPct.toFixed(1)}% utilized across all accounts` : "Total GPU count unavailable"}
+          </p>
+        </div>
 
 
         {/* Running jobs */}
