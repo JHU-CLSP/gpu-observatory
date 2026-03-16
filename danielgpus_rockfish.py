@@ -229,6 +229,46 @@ if interactive_jobs:
 print()
 
 # ============================================================
+# Section 4: Pending jobs (dkhasha1 account)
+# ============================================================
+
+pending_out = run([
+    "squeue",
+    "-O", "JobID:12,UserName:20,Partition:15,tres-req:100",
+    "--account=dkhasha1",
+    "-t", "PD",
+    "--noheader",
+])
+
+pending_jobs = []
+pending_user_gpus = defaultdict(int)  # user -> total GPUs requested
+
+for line in pending_out.splitlines():
+    fields = line.split()
+    if len(fields) < 3:
+        continue
+    jobid = fields[0].strip()
+    user  = fields[1].strip()
+    part  = fields[2].strip().rstrip("*")
+    tres  = fields[3].strip() if len(fields) > 3 else ""
+
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    gpus = int(m.group(1)) if m else 0
+
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus})
+    pending_user_gpus[user] += gpus
+
+total_pending_gpus = sum(pending_user_gpus.values())
+
+print(f"=== dkhasha1 pending jobs: {len(pending_jobs)} ({total_pending_gpus} GPUs queued) ===")
+if pending_jobs:
+    print(f"{'USER':<15} {'JOB ID':>10} {'PARTITION':<15} {'GPUS':>6}")
+    print(f"{'-------------':<15} {'------':>10} {'-------------':<15} {'-----':>6}")
+    for j in sorted(pending_jobs, key=lambda x: x["user"]):
+        print(f"{j['user']:<15} {j['jobid']:>10} {j['partition']:<15} {j['gpus_requested']:>6}")
+print()
+
+# ============================================================
 # Scratch space
 # ============================================================
 
@@ -295,6 +335,15 @@ report = {
         "total": grand,
     },
     "interactive_jobs": interactive_jobs,
+    "pending_jobs": pending_jobs,
+    "dkhasha1_pending": {
+        "job_count": len(pending_jobs),
+        "total_gpus_requested": total_pending_gpus,
+        "by_user": [
+            {"user": u, "gpus_requested": g}
+            for u, g in sorted(pending_user_gpus.items(), key=lambda x: -x[1])
+        ],
+    },
     "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,
 }

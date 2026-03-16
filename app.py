@@ -62,10 +62,13 @@ def _snapshot_to_history_point() -> dict | None:
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "dsai_team_usage": dsai.get("dkhasha1_totals", {}).get("total", 0),
         "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0),
+        "dsai_pending_gpus": dsai.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
         "rockfish_team_usage": rockfish.get("dkhasha1_totals", {}).get("total", 0),
         "rockfish_total_usage": rockfish.get("partition_totals", {}).get("used", 0),
+        "rockfish_pending_gpus": rockfish.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
         "ia1_active": ia1.get("summary", {}).get("active_gpus", 0),
         "ia1_allocated": ia1.get("summary", {}).get("allocated_gpus", 0),
+        "ia1_pending_gpus": ia1.get("pending_summary", {}).get("total_gpus_requested", 0),
     }
 
 

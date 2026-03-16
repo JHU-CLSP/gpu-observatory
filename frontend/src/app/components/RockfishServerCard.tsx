@@ -1,7 +1,7 @@
 import { RockfishStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, Users, AlertCircle, HardDrive } from "lucide-react";
+import { Server, Users, AlertCircle, HardDrive, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
 
 interface RockfishServerCardProps {
@@ -131,6 +131,26 @@ export function RockfishServerCard({ stats }: RockfishServerCardProps) {
                     </span>
                     <span className="font-bold">{user.total} GPUs</span>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Pending Queue */}
+        {stats.dkhasha1_pending?.job_count > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-purple-500" />
+              Pending Queue
+              <Badge variant="outline" className="text-purple-600 border-purple-600 text-xs">
+                {stats.dkhasha1_pending.job_count} jobs · {stats.dkhasha1_pending.total_gpus_requested} GPUs
+              </Badge>
+            </h4>
+            <div className="space-y-1">
+              {stats.dkhasha1_pending.by_user.map((u) => (
+                <div key={u.user} className="text-xs bg-purple-50 dark:bg-purple-950 p-2 rounded flex items-center justify-between">
+                  <span className="font-mono">{u.user}</span>
+                  <span className="text-muted-foreground">{u.gpus_requested} GPUs queued</span>
                 </div>
               ))}
             </div>

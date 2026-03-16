@@ -22,6 +22,19 @@ export interface DSAIInteractiveJob {
   gpus: number;
 }
 
+export interface PendingJob {
+  jobid: string;
+  user: string;
+  partition: string;
+  gpus_requested: number;
+}
+
+export interface PendingSummary {
+  job_count: number;
+  total_gpus_requested: number;
+  by_user: { user: string; gpus_requested: number }[];
+}
+
 export interface DSAIIdleGPU {
   node: string;
   gpu_index: number;
@@ -46,6 +59,8 @@ export interface DSAIStats {
   };
   interactive_jobs: DSAIInteractiveJob[];
   idle_allocated_gpus: DSAIIdleGPU[];
+  pending_jobs: PendingJob[];
+  dkhasha1_pending: PendingSummary;
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }
@@ -74,6 +89,8 @@ export interface RockfishStats {
     total: number;
   };
   interactive_jobs: DSAIInteractiveJob[];
+  pending_jobs: PendingJob[];
+  dkhasha1_pending: PendingSummary;
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }
@@ -111,6 +128,8 @@ export interface IA1Stats {
   gpus: IA1GPU[];
   users: IA1User[];
   idle_allocated_gpus: IA1IdleGPU[];
+  pending_jobs: PendingJob[];
+  pending_summary: PendingSummary;
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
 }
@@ -119,8 +138,11 @@ export interface HistoricalDataPoint {
   timestamp: string;
   dsai_team_usage: number;
   dsai_total_usage: number;
+  dsai_pending_gpus: number;
   rockfish_team_usage: number;
   rockfish_total_usage: number;
+  rockfish_pending_gpus: number;
   ia1_active: number;
   ia1_allocated: number;
+  ia1_pending_gpus: number;
 }

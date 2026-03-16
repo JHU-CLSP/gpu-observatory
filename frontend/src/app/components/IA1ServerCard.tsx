@@ -1,7 +1,7 @@
 import { IA1Stats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, AlertTriangle, Activity, HardDrive } from "lucide-react";
+import { Server, AlertTriangle, Activity, HardDrive, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
 
 interface IA1ServerCardProps {
@@ -141,6 +141,27 @@ export function IA1ServerCard({ stats }: IA1ServerCardProps) {
             </div>
           </div>
         </div>
+
+        {/* Pending Queue */}
+        {stats.pending_summary?.job_count > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-purple-500" />
+              Pending Queue
+              <Badge variant="outline" className="text-purple-600 border-purple-600 text-xs">
+                {stats.pending_summary.job_count} jobs · {stats.pending_summary.total_gpus_requested} GPUs
+              </Badge>
+            </h4>
+            <div className="space-y-1">
+              {stats.pending_summary.by_user.map((u) => (
+                <div key={u.user} className="text-xs bg-purple-50 dark:bg-purple-950 p-2 rounded flex items-center justify-between">
+                  <span className="font-mono">{u.user}</span>
+                  <span className="text-muted-foreground">{u.gpus_requested} GPUs queued</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* User Breakdown */}
         {stats.users.length > 0 && (

@@ -32,27 +32,32 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString("en-US", { 
-      hour: "2-digit", 
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
       minute: "2-digit",
-      hour12: false 
+      hour12: false,
     });
   };
 
   const dsaiData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.dsai_team_usage,
+    "Pending": point.dsai_pending_gpus,
   }));
 
   const rockfishData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.rockfish_team_usage,
+    "Pending": point.rockfish_pending_gpus,
   }));
 
   const ia1Data = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Active": point.ia1_active,
     "Allocated": point.ia1_allocated,
+    "Pending": point.ia1_pending_gpus,
   }));
 
   return (
@@ -91,6 +96,14 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 dataKey="Team Usage"
                 stroke="#8b5cf6"
                 strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Pending"
+                stroke="#c4b5fd"
+                strokeWidth={2}
+                strokeDasharray="5 5"
                 dot={false}
               />
             </LineChart>
@@ -134,6 +147,14 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 strokeWidth={2}
                 dot={false}
               />
+              <Line
+                type="monotone"
+                dataKey="Pending"
+                stroke="#93c5fd"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
@@ -169,17 +190,25 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="Active" 
-                stroke="#10b981" 
+              <Line
+                type="monotone"
+                dataKey="Active"
+                stroke="#10b981"
                 strokeWidth={2}
                 dot={false}
               />
-              <Line 
-                type="monotone" 
-                dataKey="Allocated" 
-                stroke="#6ee7b7" 
+              <Line
+                type="monotone"
+                dataKey="Allocated"
+                stroke="#6ee7b7"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Pending"
+                stroke="#a78bfa"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}

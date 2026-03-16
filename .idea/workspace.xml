@@ -2,10 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="fix.">
-      <change afterPath="$PROJECT_DIR$/screenshot-1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/screenshot-2.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/danielgpus_dsai.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_dsai.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/danielgpus_ia1.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_ia1.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/danielgpus_rockfish.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_rockfish.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/HistoricalChart.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/IA1ServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/IA1ServerCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/RockfishServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/RockfishServerCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -15,31 +23,31 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 5
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
   <component name="ProjectId" id="3AwFuvcX7OripoJOJp2NZJhqPIi" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "ai.playground.ignore.import.keys.banner.in.settings": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "/Users/danielk/PycharmProjects/gpu-stats-ia1-lab",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "ts.external.directory.path": "/Applications/PyCharm.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/danielk/PycharmProjects/gpu-stats-ia1-lab&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Applications/PyCharm.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
@@ -60,7 +68,9 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1773495951209</updated>
-      <workItem from="1773495952209" duration="19199000" />
+      <workItem from="1773495952209" duration="19633000" />
+      <workItem from="1773620141945" duration="1215000" />
+      <workItem from="1773621459985" duration="350000" />
     </task>
     <task id="LOCAL-00001" summary="add python stats collectors.">
       <option name="closed" value="true" />
@@ -102,7 +112,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773516932467</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="fix.">
+      <option name="closed" value="true" />
+      <created>1773517997960</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1773517997960</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
