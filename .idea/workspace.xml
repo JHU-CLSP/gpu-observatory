@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="upd">
+    <list default="true" id="41e0cc6f-b8f2-4fb2-87a3-7d21fda8be4f" name="Changes" comment="Show the usage of other accounts.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/danielgpus_dsai.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_dsai.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/components/DSAIServerCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/types/gpu-stats.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/danielgpus_rockfish.py" beforeDir="false" afterPath="$PROJECT_DIR$/danielgpus_rockfish.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,7 +62,7 @@
       <workItem from="1773620141945" duration="1215000" />
       <workItem from="1773621459985" duration="3281000" />
       <workItem from="1773662778557" duration="1751000" />
-      <workItem from="1773672812484" duration="4988000" />
+      <workItem from="1773672812484" duration="5761000" />
     </task>
     <task id="LOCAL-00001" summary="add python stats collectors.">
       <option name="closed" value="true" />
@@ -122,7 +120,15 @@
       <option name="project" value="LOCAL" />
       <updated>1773622124888</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Show the usage of other accounts.">
+      <option name="closed" value="true" />
+      <created>1773691093279</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1773691093279</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -135,7 +141,8 @@
     <MESSAGE value="update." />
     <MESSAGE value="fix." />
     <MESSAGE value="Also show &quot;pending&quot; jobs." />
-    <option name="LAST_COMMIT_MESSAGE" value="Also show &quot;pending&quot; jobs." />
+    <MESSAGE value="Show the usage of other accounts." />
+    <option name="LAST_COMMIT_MESSAGE" value="Show the usage of other accounts." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

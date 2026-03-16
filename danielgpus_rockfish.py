@@ -235,7 +235,7 @@ print()
 
 pending_out = run([
     "squeue",
-    "-o", "%i|%u|%P|%b|%r",
+    "-O", "JobID:12,UserName:20,Partition:15,tres-per-job:100,Reason:100",
     "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "PD",
     "--noheader",
@@ -245,16 +245,16 @@ pending_jobs = []
 pending_user_gpus = defaultdict(int)  # user -> total GPUs requested
 
 for line in pending_out.splitlines():
-    parts = line.split("|")
-    if len(parts) < 2:
+    fields = line.split()
+    if len(fields) < 2:
         continue
-    jobid  = parts[0].strip()
-    user   = parts[1].strip()
-    part   = parts[2].strip().rstrip("*") if len(parts) > 2 else ""
-    gres   = parts[3].strip() if len(parts) > 3 else ""
-    reason = parts[4].strip() if len(parts) > 4 else ""
+    jobid  = fields[0].strip()
+    user   = fields[1].strip()
+    part   = fields[2].strip().rstrip("*") if len(fields) > 2 else ""
+    tres   = fields[3].strip() if len(fields) > 3 else ""
+    reason = fields[4].strip() if len(fields) > 4 else ""
 
-    m = re.search(r"gpu:(?:([^:,\s\d][^:,\s]*):)?(\d+)", gres)
+    m = re.search(r"gres/gpu(?::([^,=\s]+))?=(\d+)", tres)
     gpu_type = m.group(1).upper() if m and m.group(1) else ""
     gpus = int(m.group(2)) if m else 0
 
