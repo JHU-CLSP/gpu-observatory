@@ -4,23 +4,7 @@ import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { Cpu, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
-
-// Maps SLURM pending reason codes to plain-English explanations.
-// Reasons come directly from squeue; this is purely a display helper.
-const SLURM_REASON: Record<string, { label: string; detail: string }> = {
-  Resources:              { label: "No free GPUs",        detail: "All H200 nodes are fully occupied right now" },
-  Priority:               { label: "Lower priority",      detail: "Waiting behind higher-priority jobs in the queue" },
-  QOSMaxGRESPerUser:      { label: "QOS GPU limit",       detail: "Your per-user GPU quota under this QOS is exhausted" },
-  QOSMaxJobsPerUser:      { label: "QOS job limit",       detail: "Your per-user running-job quota under this QOS is exhausted" },
-  QOSGrpGRES:             { label: "QOS group GPU limit", detail: "The group GPU quota for this QOS is exhausted" },
-  AssocMaxGRESPerUser:    { label: "Account GPU limit",   detail: "Your team's condo GPU allocation is fully used" },
-  AssocGrpGRES:           { label: "Account group limit", detail: "The group GPU limit for the dkhasha1 account is reached" },
-  AssocMaxJobsPerUser:    { label: "Account job limit",   detail: "Your per-user job count limit for this account is reached" },
-  ReqNodeNotAvail:        { label: "Node unavailable",    detail: "The requested node is down, drained, or reserved" },
-  Dependency:             { label: "Dependency",          detail: "Job is waiting for another job to complete first" },
-  BeginTime:              { label: "Scheduled start",     detail: "Job has a future start time set" },
-  PartitionTimeLimit:     { label: "Time limit",          detail: "Requested walltime exceeds the partition limit" },
-};
+import { PendingReason } from "./PendingReason";
 
 function nodeStateStyle(state: string): string {
   const s = state.toLowerCase().replace(/\*$/, "");
@@ -41,26 +25,6 @@ function NodePill({ n }: { n: H200Node }) {
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">{n.state}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function PendingReason({ reason }: { reason: string }) {
-  const known = SLURM_REASON[reason];
-  const label = known ? known.label : reason;
-  const detail = known ? `${reason}: ${known.detail}` : reason;
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-teal-700 dark:text-teal-400 cursor-help underline decoration-dotted">
-            {label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs text-xs">
-          {detail}
-        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

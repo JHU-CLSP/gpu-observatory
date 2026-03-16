@@ -27,6 +27,7 @@ export interface PendingJob {
   user: string;
   partition: string;
   gpus_requested: number;
+  reason?: string;
 }
 
 export interface PendingSummary {

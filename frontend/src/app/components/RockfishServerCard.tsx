@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Server, Users, AlertCircle, HardDrive, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
+import { PendingReason } from "./PendingReason";
 
 interface RockfishServerCardProps {
   stats: RockfishStats;
@@ -147,10 +148,13 @@ export function RockfishServerCard({ stats }: RockfishServerCardProps) {
               </Badge>
             </h4>
             <div className="space-y-1">
-              {stats.dkhasha1_pending.by_user.map((u) => (
-                <div key={u.user} className="text-xs bg-purple-50 dark:bg-purple-950 p-2 rounded flex items-center justify-between">
-                  <span className="font-mono">{u.user}</span>
-                  <span className="text-muted-foreground">{u.gpus_requested} GPUs queued</span>
+              {stats.pending_jobs.map((job) => (
+                <div key={job.jobid} className="text-xs bg-purple-50 dark:bg-purple-950/40 p-2 rounded flex items-center justify-between">
+                  <span className="font-mono">{job.user}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{job.gpus_requested} GPUs</span>
+                    {job.reason && <PendingReason reason={job.reason} />}
+                  </div>
                 </div>
               ))}
             </div>
