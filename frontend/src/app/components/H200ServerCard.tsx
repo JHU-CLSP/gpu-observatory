@@ -4,6 +4,35 @@ import { Badge } from "./ui/badge";
 import { Cpu, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
 
+// Maps SLURM pending reason codes to plain-English explanations.
+// Reasons come directly from squeue; this is purely a display helper.
+const SLURM_REASON: Record<string, { label: string; detail: string }> = {
+  Resources:              { label: "No free GPUs",         detail: "All H200 nodes are fully occupied right now" },
+  Priority:               { label: "Lower priority",       detail: "Waiting behind higher-priority jobs in the queue" },
+  QOSMaxGRESPerUser:      { label: "QOS GPU limit",        detail: "Your per-user GPU quota under this QOS is exhausted" },
+  QOSMaxJobsPerUser:      { label: "QOS job limit",        detail: "Your per-user running-job quota under this QOS is exhausted" },
+  QOSGrpGRES:             { label: "QOS group GPU limit",  detail: "The group GPU quota for this QOS is exhausted" },
+  AssocMaxGRESPerUser:    { label: "Account GPU limit",    detail: "Your team's condo GPU allocation is fully used" },
+  AssocGrpGRES:           { label: "Account group limit",  detail: "The group GPU limit for the dkhasha1 account is reached" },
+  AssocMaxJobsPerUser:    { label: "Account job limit",    detail: "Your per-user job count limit for this account is reached" },
+  ReqNodeNotAvail:        { label: "Node unavailable",     detail: "The requested node is down, drained, or reserved" },
+  Dependency:             { label: "Dependency",           detail: "Job is waiting for another job to complete first" },
+  BeginTime:              { label: "Scheduled start",      detail: "Job has a future start time set" },
+  PartitionTimeLimit:     { label: "Time limit",           detail: "Requested walltime exceeds the partition limit" },
+};
+
+function PendingReason({ reason }: { reason: string }) {
+  const known = SLURM_REASON[reason];
+  return (
+    <span
+      title={known ? `${reason}: ${known.detail}` : reason}
+      className="text-purple-600 dark:text-purple-400 cursor-help underline decoration-dotted"
+    >
+      {known ? known.label : reason}
+    </span>
+  );
+}
+
 interface H200ServerCardProps {
   stats: DSAIStats;
 }
@@ -127,9 +156,7 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
                   <span className="font-mono">{job.user}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground">{job.gpus_requested} GPUs</span>
-                    {job.reason && (
-                      <span className="text-purple-600 dark:text-purple-400">{job.reason}</span>
-                    )}
+                    {job.reason && <PendingReason reason={job.reason} />}
                   </div>
                 </div>
               ))}
