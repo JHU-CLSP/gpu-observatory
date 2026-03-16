@@ -1,4 +1,4 @@
-import { DSAIStats, H200PendingJob } from "../types/gpu-stats";
+import { DSAIStats, H200PendingJob, H200Node } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -21,6 +21,30 @@ const SLURM_REASON: Record<string, { label: string; detail: string }> = {
   BeginTime:              { label: "Scheduled start",     detail: "Job has a future start time set" },
   PartitionTimeLimit:     { label: "Time limit",          detail: "Requested walltime exceeds the partition limit" },
 };
+
+function nodeStateStyle(state: string): string {
+  const s = state.toLowerCase().replace(/\*$/, "");
+  if (s === "idle")      return "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400";
+  if (s === "mixed")     return "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400";
+  if (s === "allocated") return "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400";
+  if (s.startsWith("drain")) return "bg-gray-100 text-gray-500 dark:bg-gray-900 dark:text-gray-500";
+  return "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400"; // down, down*, not_resp
+}
+
+function NodePill({ n }: { n: H200Node }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className={`text-xs font-mono px-2 py-0.5 rounded cursor-default ${nodeStateStyle(n.state)}`}>
+            {n.node}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">{n.state}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 function PendingReason({ reason }: { reason: string }) {
   const known = SLURM_REASON[reason];
@@ -107,9 +131,11 @@ export function H200ServerCard({ stats }: H200ServerCardProps) {
             </span>
           </div>
           {h200.total_gpus_available > 0 && <Progress value={clusterPct} className="h-2" />}
-          <p className="text-xs text-muted-foreground">
-            {h200.total_gpus_available > 0 ? `${clusterPct.toFixed(1)}% utilized across all accounts` : "Total GPU count unavailable"}
-          </p>
+          {h200.nodes && h200.nodes.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {h200.nodes.map((n) => <NodePill key={n.node} n={n} />)}
+            </div>
+          )}
         </div>
 
 

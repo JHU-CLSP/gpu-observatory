@@ -49,11 +49,17 @@ export interface H200PendingJob {
   reason: string;
 }
 
+export interface H200Node {
+  node: string;
+  state: string;
+}
+
 export interface H200Stats {
   team_limit: number;
   team_gpus_used: number;
   total_gpus_used: number;
   total_gpus_available: number;
+  nodes: H200Node[];
   running_jobs: H200RunningJob[];
   pending_jobs: H200PendingJob[];
   pending_summary: PendingSummary;

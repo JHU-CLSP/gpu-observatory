@@ -54,13 +54,6 @@ for line in sinfo_out.splitlines():
         node_partition[node] = part
         seen.add(node)
 
-# Add H200 nodes so the scontrol loop below tracks them too
-h200_nodes_out = run(["sinfo", "-p", "h200", "-N", "-o", "%N", "--noheader"])
-for line in h200_nodes_out.splitlines():
-    node = line.strip()
-    if node and node not in seen:
-        node_partition[node] = "h200"
-        seen.add(node)
 
 part_total = defaultdict(int)
 part_alloc = defaultdict(int)
@@ -373,23 +366,20 @@ print()
 
 H200_TEAM_LIMIT = 24
 
-# GPU totals: prefer scontrol-derived counts (part_total/part_alloc["h200"]);
-# fall back to sinfo %G parsing in case H200 nodes weren't captured above.
-h200_sinfo_total = 0
-h200_sinfo_out = run(["sinfo", "-p", "h200", "-N", "-o", "%N|%G|%t", "--noheader"])
-for line in h200_sinfo_out.splitlines():
-    parts = line.split("|")
-    if len(parts) < 3:
+# Per-node state for H200 nodes.
+GPUS_PER_H200_NODE = 4
+h200_node_state_out = run(["sinfo", "-p", "h200", "-o", "%n %T", "--noheader"])
+h200_nodes = []
+for line in h200_node_state_out.splitlines():
+    parts = line.split()
+    if len(parts) < 2:
         continue
-    gres_str = parts[1].strip()
-    state    = parts[2].strip()
-    if re.search(r"down|drain|not_resp|maint", state, re.IGNORECASE):
-        continue
-    m = re.search(r"gpu:[^,()\s]*", gres_str)
-    if m:
-        cnt = re.search(r"\d+$", m.group())
-        if cnt:
-            h200_sinfo_total += int(cnt.group())
+    h200_nodes.append({"node": parts[0].strip(), "state": parts[1].strip()})
+
+h200_node_total = sum(
+    GPUS_PER_H200_NODE for n in h200_nodes
+    if not re.search(r"down|drain|not_resp|maint", n["state"], re.IGNORECASE)
+)
 
 # All running jobs on h200 (any account)
 h200_run_out = run([
@@ -452,7 +442,7 @@ for line in h200_pend_out.splitlines():
 h200_total_pending_gpus = sum(h200_pending_user_gpus.values())
 
 print()
-print(f"=== H200: team {h200_team_gpus_used}/{H200_TEAM_LIMIT} GPUs  |  cluster {h200_total_gpus_used}/{part_total['h200']} GPUs ===")
+print(f"=== H200: team {h200_team_gpus_used}/{H200_TEAM_LIMIT} GPUs  |  cluster {h200_total_gpus_used}/{h200_node_total} GPUs ===")
 if h200_running_jobs:
     print(f"{'USER':<15} {'JOB ID':>10} {'ACCOUNT':<15} {'GPUS':>6}")
     print(f"{'-------------':<15} {'------':>10} {'-------------':<15} {'-----':>6}")
@@ -542,8 +532,9 @@ report = {
     "h200": {
         "team_limit": H200_TEAM_LIMIT,
         "team_gpus_used": h200_team_gpus_used,
-        "total_gpus_used": part_alloc["h200"] or h200_total_gpus_used,
-        "total_gpus_available": part_total["h200"] or h200_sinfo_total,
+        "total_gpus_used": h200_total_gpus_used,
+        "total_gpus_available": h200_node_total,
+        "nodes": h200_nodes,
         "running_jobs": h200_running_jobs,
         "pending_jobs": h200_pending_jobs,
         "pending_summary": {
