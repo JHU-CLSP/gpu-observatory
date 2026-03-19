@@ -105,7 +105,7 @@ async def _fetch_server(server: str) -> dict:
             ["python3", str(script)],
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
         )
         if proc.returncode != 0:
             raise RuntimeError(f"Script exited {proc.returncode}: {proc.stderr[:500]}")

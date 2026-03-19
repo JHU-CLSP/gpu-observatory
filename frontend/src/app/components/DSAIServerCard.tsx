@@ -192,6 +192,21 @@ export function DSAIServerCard({ stats }: DSAIServerCardProps) {
                 {stats.dkhasha1_pending.job_count} jobs · {stats.dkhasha1_pending.total_gpus_requested} GPUs
               </Badge>
             </h4>
+            <div className="text-xs text-muted-foreground bg-muted/40 rounded-md p-3 space-y-2">
+              <p>
+                <span className="font-semibold text-foreground">Priority:</span>{" "}
+                Slurm determined that other jobs had higher scheduling priority. Priority is influenced by fairshare,
+                job age (time in queue), job size, and overall demand on the partition. If our account has used a lot
+                of resources recently, jobs may temporarily receive lower priority so resources are shared fairly.
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Scheduler placement:</span>{" "}
+                Large requests (e.g. an entire 8×A100 or multiple H100 nodes) require Slurm to find a complete set
+                of resources available simultaneously on suitable node(s). Even if GPUs appear free, they may not
+                meet all job requirements (GPU type, CPU count, memory, node availability), so a job may remain
+                pending until an appropriate placement becomes available.
+              </p>
+            </div>
             <div className="space-y-1">
               {stats.pending_jobs.map((job) => (
                 <div key={job.jobid} className="text-xs bg-purple-50 dark:bg-purple-950/40 p-2 rounded flex items-center justify-between">
