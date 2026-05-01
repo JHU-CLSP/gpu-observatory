@@ -471,12 +471,12 @@ if h200_pending_jobs:
 print()
 
 # ============================================================
-# Section 6b: B200 partition (blackwell_test QOS)
+# Section 6b: B200 partition (-p b200)
 # ============================================================
 
-log("Section 6b: querying B200 (blackwell_test QOS)...")
+log("Section 6b: querying B200 (partition b200)...")
 
-b200_node_state_out = run(["sinfo", "--qos=blackwell_test", "-o", "%n|%T|%G", "--noheader"])
+b200_node_state_out = run(["sinfo", "-p", "b200", "-o", "%n|%T|%G", "--noheader"])
 b200_nodes = []
 b200_node_total = 0
 for line in b200_node_state_out.splitlines():
@@ -493,7 +493,7 @@ for line in b200_node_state_out.splitlines():
         b200_node_total += gpus_on_node
 
 b200_run_out = run([
-    "squeue", "--qos=blackwell_test", "-t", "R",
+    "squeue", "-p", "b200", "-t", "R",
     "-O", "JobID:12,UserName:20,Account:20,tres-alloc:100",
     "--noheader",
 ])
@@ -518,7 +518,7 @@ for line in b200_run_out.splitlines():
         b200_team_gpus_used += gpus
 
 b200_pend_out = run([
-    "squeue", "--qos=blackwell_test", "-t", "PD",
+    "squeue", "-p", "b200", "-t", "PD",
     "--account=dkhasha1",
     "-o", "%i|%u|%b|%r",
     "--noheader",
