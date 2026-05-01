@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -25,6 +26,12 @@ if os.environ.get("_GPUSTATS_ON_REMOTE") != "1":
 
 PARTITIONS = ["a100", "h100", "nvl", "l40s"]
 
+_t0 = time.time()
+
+def log(msg):
+    elapsed = time.time() - _t0
+    print(f"[dsai +{elapsed:5.1f}s] {msg}", file=sys.stderr, flush=True)
+
 
 def run(cmd):
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -37,6 +44,7 @@ def run(cmd):
 
 # Map nodes to partitions via sinfo.
 # h200 is queried separately because it is not in the default sinfo output.
+log("Section 1: querying sinfo for node-partition map...")
 node_partition = {}
 sinfo_out = run([
     "sinfo", "-N",
@@ -61,7 +69,7 @@ part_alloc = defaultdict(int)
 part_idle  = defaultdict(int)
 part_down  = defaultdict(int)
 
-# Parse scontrol show node
+log("Section 1: running scontrol show node...")
 scontrol_out = run(["scontrol", "show", "node"])
 
 current_node = None
@@ -128,6 +136,7 @@ print(f"{'TOTAL':<12} {grand_total:>6} {grand_alloc:>6} {grand_idle:>6} {grand_d
 # Section 2: dkhasha1 account GPU usage
 # ============================================================
 
+log("Section 2: querying dkhasha1 running jobs...")
 user_gpus = {part: defaultdict(int) for part in PARTITIONS}
 users_seen = []
 
@@ -191,6 +200,7 @@ print()
 # Section 3: Interactive jobs (dkhasha1 account)
 # ============================================================
 
+log("Section 3: querying interactive jobs...")
 INTERACTIVE_NAMES = {"bash", "sh", "zsh", "fish", "interactive",
                      "python", "python3", "ipython", "jupyter", "singularity_shell"}
 
@@ -232,6 +242,7 @@ print()
 # Finds GPUs our team has allocated but is not actively using.
 # ============================================================
 
+log("Section 4: querying node lists for idle GPU check...")
 squeue_nodes_out = run([
     "squeue",
     "-O", "JobID:12,UserName:20,NodeList:100,tres-alloc:100",
@@ -259,7 +270,9 @@ for line in squeue_nodes_out.splitlines():
 
 idle_allocated_gpus = []  # {node, gpu_index, util_pct, users}
 
+log(f"Section 4: SSHing into {len(node_to_users)} nodes to check nvidia-smi...")
 for node, users in sorted(node_to_users.items()):
+    log(f"  ssh {node} nvidia-smi...")
     cmd = (
         "nvidia-smi --query-gpu=index,utilization.gpu,uuid --format=csv,noheader,nounits 2>/dev/null; "
         "echo '---SEP---'; "
@@ -322,6 +335,7 @@ else:
 # Section 5: Pending jobs (dkhasha1 account)
 # ============================================================
 
+log("Section 5: querying pending jobs...")
 pending_out = run([
     "squeue",
     "-o", "%i|%u|%P|%b|%r",
@@ -371,6 +385,7 @@ H200_TEAM_LIMIT = 24
 
 # Per-node state for H200 nodes.
 GPUS_PER_H200_NODE = 4
+log("Section 6: querying H200 partition...")
 h200_node_state_out = run(["sinfo", "-p", "h200", "-o", "%n %T", "--noheader"])
 h200_nodes = []
 for line in h200_node_state_out.splitlines():
@@ -459,6 +474,7 @@ print()
 # Section 7: Cluster-wide GPU usage by account
 # ============================================================
 
+log("Section 7: querying cluster-wide account usage...")
 all_accounts_out = run([
     "squeue", "-t", "R",
     "-O", "Account:40,Partition:15,tres-alloc:100",
@@ -506,6 +522,7 @@ def get_scratch_space_tb(fs_path="/scratch/dkhasha1/"):
     return 0.0, 0.0
 
 
+log("Scratch: running quotas.py...")
 try:
     scratch_total_tb, scratch_used_tb = get_scratch_space_tb("/scratch/dkhasha1/")
     print(f"Scratch /scratch/dkhasha1: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
@@ -588,4 +605,5 @@ report = {
     "scratch_space_used_tb":  scratch_used_tb,
 }
 
+log(f"Done. Total elapsed: {time.time() - _t0:.1f}s")
 print(json.dumps(report, indent=2))
