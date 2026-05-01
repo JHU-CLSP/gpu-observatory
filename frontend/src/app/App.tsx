@@ -8,8 +8,20 @@ import { DSAIStats, RockfishStats, IA1Stats, HistoricalDataPoint } from "./types
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 import { Button } from "./components/ui/button";
-import { RefreshCw, Activity } from "lucide-react";
+import { RefreshCw, Activity, AlertCircle } from "lucide-react";
 import { Badge } from "./components/ui/badge";
+
+function ServerErrorCard({ name, error }: { name: string; error: string }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-red-200 dark:border-red-800">
+      <div className="flex items-center gap-2 text-red-600 font-medium mb-2">
+        <AlertCircle className="h-4 w-4" />
+        {name} Unavailable
+      </div>
+      <p className="text-sm text-muted-foreground font-mono break-all">{error}</p>
+    </div>
+  );
+}
 
 export default function App() {
   const [dsaiStats, setDsaiStats] = useState<DSAIStats | null>(null);
@@ -19,6 +31,9 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [dsaiError, setDsaiError] = useState<string | null>(null);
+  const [rockfishError, setRockfishError] = useState<string | null>(null);
+  const [ia1Error, setIa1Error] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
@@ -28,9 +43,16 @@ export default function App() {
         fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
         fetch(`${API_BASE}/stats/history`).then(r => r.json()),
       ]);
-      setDsaiStats(dsai);
-      setRockfishStats(rockfish);
-      setIa1Stats(ia1);
+
+      if (dsai.error) { setDsaiError(dsai.error); setDsaiStats(null); }
+      else { setDsaiStats(dsai); setDsaiError(null); }
+
+      if (rockfish.error) { setRockfishError(rockfish.error); setRockfishStats(null); }
+      else { setRockfishStats(rockfish); setRockfishError(null); }
+
+      if (ia1.error) { setIa1Error(ia1.error); setIa1Stats(null); }
+      else { setIa1Stats(ia1); setIa1Error(null); }
+
       setHistoricalData(history);
       setLastUpdate(new Date());
       setFetchError(null);
@@ -60,15 +82,14 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const serverError = (dsaiStats as any)?.error || (rockfishStats as any)?.error || (ia1Stats as any)?.error;
-  if (!dsaiStats || !rockfishStats || !ia1Stats || serverError) {
+  // Only block the full page on initial load (nothing yet) or backend unreachable
+  const nothingLoaded = !dsaiStats && !rockfishStats && !ia1Stats && !dsaiError && !rockfishError && !ia1Error;
+  if (fetchError || nothingLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          {fetchError || serverError ? (
-            <>
-              <p className="text-red-500 font-medium mb-2">{fetchError || serverError}</p>
-            </>
+          {fetchError ? (
+            <p className="text-red-500 font-medium mb-2">{fetchError}</p>
           ) : (
             <>
               <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
@@ -121,56 +142,88 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">DSAI Team Usage</div>
-            <div className="text-3xl font-bold text-purple-600">
-              {dsaiStats.dkhasha1_totals.total}
-              <span className="text-lg text-muted-foreground"> / 32</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {((dsaiStats.dkhasha1_totals.total / 32) * 100).toFixed(1)}% of allocation
-              {dsaiStats.idle_allocated_gpus?.length > 0 && (
-                <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600">
-                  {dsaiStats.idle_allocated_gpus.length} idle allocated
-                </Badge>
-              )}
-            </div>
+            {dsaiStats ? (
+              <>
+                <div className="text-3xl font-bold text-purple-600">
+                  {dsaiStats.dkhasha1_totals.total}
+                  <span className="text-lg text-muted-foreground"> / 32</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {((dsaiStats.dkhasha1_totals.total / 32) * 100).toFixed(1)}% of allocation
+                  {dsaiStats.idle_allocated_gpus?.length > 0 && (
+                    <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600">
+                      {dsaiStats.idle_allocated_gpus.length} idle allocated
+                    </Badge>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">H200 Condo Usage</div>
-            <div className="text-3xl font-bold text-teal-600">
-              {dsaiStats.h200?.team_gpus_used ?? 0}
-              <span className="text-lg text-muted-foreground"> / {dsaiStats.h200?.team_limit ?? 24}</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {(((dsaiStats.h200?.team_gpus_used ?? 0) / (dsaiStats.h200?.team_limit ?? 24)) * 100).toFixed(1)}% of condo allocation
-            </div>
+            {dsaiStats ? (
+              <>
+                <div className="text-3xl font-bold text-teal-600">
+                  {dsaiStats.h200?.team_gpus_used ?? 0}
+                  <span className="text-lg text-muted-foreground"> / {dsaiStats.h200?.team_limit ?? 24}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {(((dsaiStats.h200?.team_gpus_used ?? 0) / (dsaiStats.h200?.team_limit ?? 24)) * 100).toFixed(1)}% of condo allocation
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">Rockfish Team Usage</div>
-            <div className="text-3xl font-bold text-blue-600">
-              {rockfishStats.dkhasha1_totals.total}
-              <span className="text-lg text-muted-foreground"> GPUs</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              No limit • {rockfishStats.dkhasha1_totals.total > 0 ? "Active" : "Idle"}
-            </div>
+            {rockfishStats ? (
+              <>
+                <div className="text-3xl font-bold text-blue-600">
+                  {rockfishStats.dkhasha1_totals.total}
+                  <span className="text-lg text-muted-foreground"> GPUs</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  No limit • {rockfishStats.dkhasha1_totals.total > 0 ? "Active" : "Idle"}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">IA1 Active GPUs</div>
-            <div className="text-3xl font-bold text-green-600">
-              {ia1Stats.summary.active_gpus}
-              <span className="text-lg text-muted-foreground"> / 10</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">
-              {ia1Stats.summary.idle_allocated > 0 && (
-                <Badge variant="outline" className="text-amber-600 border-amber-600">
-                  {ia1Stats.summary.idle_allocated} idle allocated
-                </Badge>
-              )}
-              {ia1Stats.summary.idle_allocated === 0 && "All allocated GPUs active"}
-            </div>
+            {ia1Stats ? (
+              <>
+                <div className="text-3xl font-bold text-green-600">
+                  {ia1Stats.summary.active_gpus}
+                  <span className="text-lg text-muted-foreground"> / 10</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {ia1Stats.summary.idle_allocated > 0 && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-600">
+                      {ia1Stats.summary.idle_allocated} idle allocated
+                    </Badge>
+                  )}
+                  {ia1Stats.summary.idle_allocated === 0 && "All allocated GPUs active"}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
           </div>
         </div>
 
@@ -181,10 +234,18 @@ export default function App() {
 
         {/* Server Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DSAIServerCard stats={dsaiStats} />
-          <H200ServerCard stats={dsaiStats} />
-          <RockfishServerCard stats={rockfishStats} />
-          <IA1ServerCard stats={ia1Stats} />
+          {dsaiStats
+            ? <DSAIServerCard stats={dsaiStats} />
+            : <ServerErrorCard name="DSAI" error={dsaiError ?? "Unknown error"} />}
+          {dsaiStats
+            ? <H200ServerCard stats={dsaiStats} />
+            : null}
+          {rockfishStats
+            ? <RockfishServerCard stats={rockfishStats} />
+            : <ServerErrorCard name="Rockfish" error={rockfishError ?? "Unknown error"} />}
+          {ia1Stats
+            ? <IA1ServerCard stats={ia1Stats} />
+            : <ServerErrorCard name="IA1" error={ia1Error ?? "Unknown error"} />}
         </div>
 
         {/* Footer */}
