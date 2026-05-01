@@ -471,6 +471,89 @@ if h200_pending_jobs:
 print()
 
 # ============================================================
+# Section 6b: B200 partition (blackwell_test QOS)
+# ============================================================
+
+log("Section 6b: querying B200 (blackwell_test QOS)...")
+
+b200_node_state_out = run(["sinfo", "--qos=blackwell_test", "-o", "%n|%T|%G", "--noheader"])
+b200_nodes = []
+b200_node_total = 0
+for line in b200_node_state_out.splitlines():
+    parts = line.split("|")
+    if len(parts) < 2:
+        continue
+    node  = parts[0].strip()
+    state = parts[1].strip()
+    gres  = parts[2].strip() if len(parts) > 2 else ""
+    m = re.search(r"gpu[^:]*(?::[^:,\s]+)*:(\d+)", gres)
+    gpus_on_node = int(m.group(1)) if m else 0
+    b200_nodes.append({"node": node, "state": state})
+    if not re.search(r"down|drain|not_resp|maint", state, re.IGNORECASE):
+        b200_node_total += gpus_on_node
+
+b200_run_out = run([
+    "squeue", "--qos=blackwell_test", "-t", "R",
+    "-O", "JobID:12,UserName:20,Account:20,tres-alloc:100",
+    "--noheader",
+])
+
+b200_running_jobs = []
+b200_team_gpus_used = 0
+b200_total_gpus_used = 0
+
+for line in b200_run_out.splitlines():
+    fields = line.split()
+    if len(fields) < 3:
+        continue
+    jobid   = fields[0].strip()
+    user    = fields[1].strip()
+    account = fields[2].strip()
+    tres    = fields[3].strip() if len(fields) > 3 else ""
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
+    gpus = int(m.group(1)) if m else 0
+    b200_running_jobs.append({"jobid": jobid, "user": user, "account": account, "gpus": gpus})
+    b200_total_gpus_used += gpus
+    if account == "dkhasha1":
+        b200_team_gpus_used += gpus
+
+b200_pend_out = run([
+    "squeue", "--qos=blackwell_test", "-t", "PD",
+    "--account=dkhasha1",
+    "-o", "%i|%u|%b|%r",
+    "--noheader",
+])
+
+b200_pending_jobs = []
+b200_pending_user_gpus = defaultdict(int)
+
+for line in b200_pend_out.splitlines():
+    parts = line.split("|")
+    if len(parts) < 2:
+        continue
+    jobid  = parts[0].strip()
+    user   = parts[1].strip()
+    gres   = parts[2].strip() if len(parts) > 2 else ""
+    reason = parts[3].strip() if len(parts) > 3 else ""
+    m = re.search(r"gpu(?::[^:,\s]+)*:(\d+)", gres)
+    gpus = int(m.group(1)) if m else 0
+    b200_pending_jobs.append({"jobid": jobid, "user": user, "gpus_requested": gpus, "reason": reason})
+    b200_pending_user_gpus[user] += gpus
+
+b200_total_pending_gpus = sum(b200_pending_user_gpus.values())
+
+print()
+print(f"=== B200: team {b200_team_gpus_used} GPUs  |  cluster {b200_total_gpus_used}/{b200_node_total} GPUs ===")
+if b200_running_jobs:
+    print(f"{'USER':<15} {'JOB ID':>10} {'ACCOUNT':<15} {'GPUS':>6}")
+    print(f"{'-------------':<15} {'------':>10} {'-------------':<15} {'-----':>6}")
+    for j in sorted(b200_running_jobs, key=lambda x: x["user"]):
+        print(f"{j['user']:<15} {j['jobid']:>10} {j['account']:<15} {j['gpus']:>6}")
+if b200_pending_jobs:
+    print(f"  Pending (dkhasha1): {len(b200_pending_jobs)} jobs, {b200_total_pending_gpus} GPUs queued")
+print()
+
+# ============================================================
 # Section 7: Cluster-wide GPU usage by account
 # ============================================================
 
@@ -590,6 +673,22 @@ report = {
             "by_user": [
                 {"user": u, "gpus_requested": g}
                 for u, g in sorted(h200_pending_user_gpus.items(), key=lambda x: -x[1])
+            ],
+        },
+    },
+    "b200": {
+        "team_gpus_used": b200_team_gpus_used,
+        "total_gpus_used": b200_total_gpus_used,
+        "total_gpus_available": b200_node_total,
+        "nodes": b200_nodes,
+        "running_jobs": b200_running_jobs,
+        "pending_jobs": b200_pending_jobs,
+        "pending_summary": {
+            "job_count": len(b200_pending_jobs),
+            "total_gpus_requested": b200_total_pending_gpus,
+            "by_user": [
+                {"user": u, "gpus_requested": g}
+                for u, g in sorted(b200_pending_user_gpus.items(), key=lambda x: -x[1])
             ],
         },
     },

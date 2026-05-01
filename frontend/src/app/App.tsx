@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DSAIServerCard } from "./components/DSAIServerCard";
 import { H200ServerCard } from "./components/H200ServerCard";
+import { B200ServerCard } from "./components/B200ServerCard";
 import { RockfishServerCard } from "./components/RockfishServerCard";
 import { IA1ServerCard } from "./components/IA1ServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
@@ -239,6 +240,9 @@ export default function App() {
             : <ServerErrorCard name="DSAI" error={dsaiError ?? "Unknown error"} />}
           {dsaiStats
             ? <H200ServerCard stats={dsaiStats} />
+            : null}
+          {dsaiStats
+            ? <B200ServerCard stats={dsaiStats} />
             : null}
           {rockfishStats
             ? <RockfishServerCard stats={rockfishStats} />

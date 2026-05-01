@@ -80,6 +80,16 @@ export interface DSAIAccountUsage {
   total: number;
 }
 
+export interface B200Stats {
+  team_gpus_used: number;
+  total_gpus_used: number;
+  total_gpus_available: number;
+  nodes: H200Node[];
+  running_jobs: H200RunningJob[];
+  pending_jobs: H200PendingJob[];
+  pending_summary: PendingSummary;
+}
+
 export interface DSAIStats {
   timestamp: string;
   server: "dsai";
@@ -100,6 +110,7 @@ export interface DSAIStats {
   pending_jobs: PendingJob[];
   dkhasha1_pending: PendingSummary;
   h200?: H200Stats;
+  b200?: B200Stats;
   cluster_account_usage?: DSAIAccountUsage[];
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
