@@ -2,7 +2,7 @@ import { DSAIStats, H200PendingJob, H200Node } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { Cpu, Clock } from "lucide-react";
+import { Cpu, Clock, AlertCircle } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 
@@ -31,13 +31,14 @@ function NodePill({ n }: { n: H200Node }) {
 }
 
 interface B200ServerCardProps {
-  stats: DSAIStats;
+  stats: DSAIStats | null;
+  error?: string | null;
 }
 
-export function B200ServerCard({ stats }: B200ServerCardProps) {
-  const b200 = stats.b200;
+export function B200ServerCard({ stats, error }: B200ServerCardProps) {
+  const b200 = stats?.b200 ?? null;
 
-  if (!b200) {
+  if (!stats || !b200) {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -46,11 +47,14 @@ export function B200ServerCard({ stats }: B200ServerCardProps) {
               <Cpu className="h-5 w-5 text-violet-600" />
               <CardTitle>DSAI Cluster (Condo)</CardTitle>
             </div>
-            <Badge variant="outline">B200</Badge>
+            <Badge variant="outline" className="text-violet-700 border-violet-600">B200</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">No B200 data available.</p>
+          <div className="flex items-center gap-2 text-red-500 text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="break-all font-mono">{error ?? "Data unavailable"}</span>
+          </div>
         </CardContent>
       </Card>
     );

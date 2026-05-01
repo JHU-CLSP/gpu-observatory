@@ -6,10 +6,32 @@ import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 
 interface DSAIServerCardProps {
-  stats: DSAIStats;
+  stats: DSAIStats | null;
+  error?: string | null;
 }
 
-export function DSAIServerCard({ stats }: DSAIServerCardProps) {
+export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
+  if (!stats) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              <CardTitle>DSAI Cluster</CardTitle>
+            </div>
+            <Badge variant="outline">Shared</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-red-500 text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="break-all font-mono">{error ?? "Data unavailable"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const teamUsagePercent = (stats.dkhasha1_totals.total / 32) * 100;
   const totalUsagePercent = (stats.partition_totals.used / stats.partition_totals.total) * 100;
   const scratchUsedPercent = stats.scratch_space_total_tb > 0

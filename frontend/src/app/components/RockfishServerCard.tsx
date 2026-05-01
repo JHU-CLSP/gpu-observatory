@@ -6,10 +6,32 @@ import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 
 interface RockfishServerCardProps {
-  stats: RockfishStats;
+  stats: RockfishStats | null;
+  error?: string | null;
 }
 
-export function RockfishServerCard({ stats }: RockfishServerCardProps) {
+export function RockfishServerCard({ stats, error }: RockfishServerCardProps) {
+  if (!stats) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              <CardTitle>Rockfish Cluster</CardTitle>
+            </div>
+            <Badge variant="outline">Shared</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-red-500 text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="break-all font-mono">{error ?? "Data unavailable"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const totalUsagePercent = (stats.partition_totals.used / stats.partition_totals.total) * 100;
   const scratchUsedPercent = stats.scratch_space_total_tb > 0
     ? (stats.scratch_space_used_tb / stats.scratch_space_total_tb) * 100

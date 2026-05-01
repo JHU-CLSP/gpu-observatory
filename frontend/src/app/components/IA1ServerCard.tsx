@@ -1,15 +1,37 @@
 import { IA1Stats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, AlertTriangle, Activity, HardDrive, Clock } from "lucide-react";
+import { Server, AlertTriangle, AlertCircle, Activity, HardDrive, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 
 interface IA1ServerCardProps {
-  stats: IA1Stats;
+  stats: IA1Stats | null;
+  error?: string | null;
 }
 
-export function IA1ServerCard({ stats }: IA1ServerCardProps) {
+export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
+  if (!stats) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Server className="h-5 w-5" />
+              <CardTitle>IA1 Node</CardTitle>
+            </div>
+            <Badge variant="default">Exclusive</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-red-500 text-sm">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="break-all font-mono">{error ?? "Data unavailable"}</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const allocatedPercent = (stats.summary.allocated_gpus / stats.summary.total_gpus) * 100;
   const activePercent = (stats.summary.active_gpus / stats.summary.total_gpus) * 100;
   const memUsedPercent = (stats.summary.total_mem_used_mb / stats.summary.total_mem_mb) * 100;

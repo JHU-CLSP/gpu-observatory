@@ -12,17 +12,6 @@ import { Button } from "./components/ui/button";
 import { RefreshCw, Activity, AlertCircle } from "lucide-react";
 import { Badge } from "./components/ui/badge";
 
-function ServerErrorCard({ name, error }: { name: string; error: string }) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-red-200 dark:border-red-800">
-      <div className="flex items-center gap-2 text-red-600 font-medium mb-2">
-        <AlertCircle className="h-4 w-4" />
-        {name} Unavailable
-      </div>
-      <p className="text-sm text-muted-foreground font-mono break-all">{error}</p>
-    </div>
-  );
-}
 
 export default function App() {
   const [dsaiStats, setDsaiStats] = useState<DSAIStats | null>(null);
@@ -235,21 +224,11 @@ export default function App() {
 
         {/* Server Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {dsaiStats
-            ? <DSAIServerCard stats={dsaiStats} />
-            : <ServerErrorCard name="DSAI" error={dsaiError ?? "Unknown error"} />}
-          {dsaiStats
-            ? <H200ServerCard stats={dsaiStats} />
-            : null}
-          {dsaiStats
-            ? <B200ServerCard stats={dsaiStats} />
-            : null}
-          {rockfishStats
-            ? <RockfishServerCard stats={rockfishStats} />
-            : <ServerErrorCard name="Rockfish" error={rockfishError ?? "Unknown error"} />}
-          {ia1Stats
-            ? <IA1ServerCard stats={ia1Stats} />
-            : <ServerErrorCard name="IA1" error={ia1Error ?? "Unknown error"} />}
+          <DSAIServerCard stats={dsaiStats} error={dsaiError} />
+          <H200ServerCard stats={dsaiStats} error={dsaiError} />
+          <B200ServerCard stats={dsaiStats} error={dsaiError} />
+          <RockfishServerCard stats={rockfishStats} error={rockfishError} />
+          <IA1ServerCard stats={ia1Stats} error={ia1Error} />
         </div>
 
         {/* Footer */}
