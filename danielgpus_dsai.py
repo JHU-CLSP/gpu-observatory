@@ -586,7 +586,7 @@ all_queue_out = run([
     "-O", "Account:40",
     "--noheader",
 ])
-cluster_account_queue: dict[str, int] = defaultdict(int)
+cluster_account_queue = defaultdict(int)
 for line in all_queue_out.splitlines():
     account = line.strip()
     if account:

@@ -108,7 +108,7 @@ async def _fetch_server(server: str) -> dict:
             timeout=300,
         )
         if proc.returncode != 0:
-            raise RuntimeError(f"Script exited {proc.returncode}: {proc.stderr[:500]}")
+            raise RuntimeError(f"Script exited {proc.returncode}: {proc.stderr[:2000]}")
         data = _extract_json(proc.stdout)
         _cache[server] = {"data": data, "fetched_at": time.time()}
         return data
