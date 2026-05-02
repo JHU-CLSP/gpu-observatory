@@ -50,7 +50,7 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="space-y-6">
         {/* Team Usage Overview */}
         <div className="space-y-2">
