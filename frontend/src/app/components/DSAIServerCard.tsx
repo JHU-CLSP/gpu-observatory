@@ -49,7 +49,9 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
           <Badge variant="outline">Shared</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-6">
         {/* Team Usage Overview */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
@@ -156,17 +158,6 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
           </div>
         )}
 
-        {/* GPU Usage by Account */}
-        {stats.cluster_account_usage && stats.cluster_account_usage.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <BarChart2 className="h-4 w-4 text-blue-500" />
-              GPU Usage by Account
-            </h4>
-            <AccountUsageChart data={stats.cluster_account_usage} />
-          </div>
-        )}
-
         {/* Interactive Jobs */}
         {stats.interactive_jobs.length > 0 && (
           <div className="space-y-2">
@@ -244,6 +235,20 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
             </div>
           </div>
         )}
+        </div>{/* end left column */}
+
+        {/* Right column: GPU Usage by Account chart */}
+        {stats.cluster_account_usage && stats.cluster_account_usage.length > 0 ? (
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-blue-500" />
+              GPU Usage by Account
+            </h4>
+            <AccountUsageChart data={stats.cluster_account_usage} />
+          </div>
+        ) : <div />}
+
+        </div>{/* end two-col grid */}
       </CardContent>
     </Card>
   );

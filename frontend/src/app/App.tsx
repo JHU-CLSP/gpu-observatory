@@ -224,7 +224,9 @@ export default function App() {
 
         {/* Server Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DSAIServerCard stats={dsaiStats} error={dsaiError} />
+          <div className="lg:col-span-2">
+            <DSAIServerCard stats={dsaiStats} error={dsaiError} />
+          </div>
           <H200ServerCard stats={dsaiStats} error={dsaiError} />
           <B200ServerCard stats={dsaiStats} error={dsaiError} />
           <RockfishServerCard stats={rockfishStats} error={rockfishError} />
