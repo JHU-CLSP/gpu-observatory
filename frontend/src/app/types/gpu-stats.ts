@@ -78,6 +78,7 @@ export interface DSAIAccountUsage {
   account: string;
   gpus: Record<string, number>;
   total: number;
+  queue: number;
 }
 
 export interface B200Stats {

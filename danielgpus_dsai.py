@@ -579,7 +579,24 @@ for line in all_accounts_out.splitlines():
 def acct_total(a):
     return sum(cluster_account_gpus[a].values())
 
-sorted_accounts = sorted(cluster_account_gpus, key=acct_total, reverse=True)
+# Section 7b: Queue size (all jobs) per account
+log("Section 7b: querying per-account queue sizes...")
+all_queue_out = run([
+    "squeue",
+    "-O", "Account:40",
+    "--noheader",
+])
+cluster_account_queue: dict[str, int] = defaultdict(int)
+for line in all_queue_out.splitlines():
+    account = line.strip()
+    if account:
+        cluster_account_queue[account] += 1
+
+all_accounts_set = set(cluster_account_gpus.keys()) | set(cluster_account_queue.keys())
+sorted_accounts = sorted(
+    all_accounts_set,
+    key=lambda a: (-acct_total(a), -cluster_account_queue[a]),
+)
 
 # ============================================================
 # Scratch space
@@ -697,8 +714,9 @@ report = {
             "account": a,
             "gpus": dict(cluster_account_gpus[a]),
             "total": acct_total(a),
+            "queue": cluster_account_queue[a],
         }
-        for a in sorted_accounts if acct_total(a) > 0
+        for a in sorted_accounts if acct_total(a) > 0 or cluster_account_queue[a] > 0
     ],
     "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,
