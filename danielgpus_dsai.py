@@ -348,7 +348,7 @@ for node, users in sorted(node_to_users.items()):
 
 idle_allocated_gpus.sort(key=lambda x: (x["node"], x["gpu_index"]))
 
-# Annotate running jobs with aggregate GPU memory from the nodes they occupy
+# Annotate running jobs with memory from the SSH-based node_gpu_memory map (if SSH worked)
 for job in dkhasha1_running_jobs_raw:
     nodes = job_to_nodes.get(job["jobid"], [])
     total_used = total_mem = 0
@@ -359,6 +359,56 @@ for job in dkhasha1_running_jobs_raw:
     if total_mem > 0:
         job["mem_used_mb"]  = total_used
         job["mem_total_mb"] = total_mem
+
+# ============================================================
+# Section 4b: GPU memory via srun --overlap (fallback when SSH unavailable)
+# Runs nvidia-smi inside each job's SLURM allocation — no SSH keys needed.
+# ============================================================
+
+def _srun_gpu_memory(jobid, timeout=20):
+    """Return (mem_used_mb, mem_total_mb) summed across all allocated GPUs."""
+    try:
+        result = subprocess.run(
+            [
+                "srun", "--overlap",
+                f"--jobid={jobid}",
+                "--ntasks-per-node=1",
+                "nvidia-smi",
+                "--query-gpu=memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True, timeout=timeout,
+        )
+        used = total = 0
+        for line in result.stdout.strip().splitlines():
+            parts = [p.strip() for p in line.split(",")]
+            if len(parts) < 2:
+                continue
+            try:
+                used  += int(parts[0])
+                total += int(parts[1])
+            except ValueError:
+                pass
+        return used, total
+    except (subprocess.TimeoutExpired, OSError):
+        return 0, 0
+
+jobs_needing_memory = [
+    j for j in dkhasha1_running_jobs_raw
+    if j["mem_total_mb"] is None and j["jobid"] in job_to_nodes
+]
+
+log(f"Section 4b: fetching GPU memory via srun --overlap for {len(jobs_needing_memory)} jobs...")
+
+def _annotate_job_memory(job):
+    used, total = _srun_gpu_memory(job["jobid"])
+    if total > 0:
+        job["mem_used_mb"]  = used
+        job["mem_total_mb"] = total
+
+with ThreadPoolExecutor(max_workers=min(8, len(jobs_needing_memory) or 1)) as pool:
+    list(pool.map(_annotate_job_memory, jobs_needing_memory))
 
 print()
 if idle_allocated_gpus:
@@ -697,8 +747,7 @@ report = {
         "node_gpu_memory_count":    len(node_gpu_memory),
         "running_jobs_total":       len(dkhasha1_running_jobs_raw),
         "running_jobs_with_memory": sum(1 for j in dkhasha1_running_jobs_raw if j["mem_total_mb"] is not None),
-        "sample_jobids_in_raw":     [j["jobid"] for j in dkhasha1_running_jobs_raw[:3]],
-        "sample_jobids_in_map":     list(job_to_nodes.keys())[:3],
+        "sample_nodes_tried":       list(node_to_users.keys())[:5],
     },
     "dkhasha1_running_jobs": dkhasha1_running_jobs_raw,
     "dkhasha1_users": [
