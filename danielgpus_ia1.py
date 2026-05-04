@@ -227,13 +227,20 @@ report = {
         "total_mem_used_mb": total_used,
         "total_mem_free_mb": total_free,
     },
-    "gpus": [{"index": g["index"], "name": g["name"], "util_pct": g["util_pct"]} for g in gpus],
+    "gpus": [
+        {
+            "index": g["index"], "name": g["name"], "util_pct": g["util_pct"],
+            "mem_used_mb": g["mem_used"], "mem_total_mb": g["mem_total"],
+        }
+        for g in gpus
+    ],
     "users": [
         {
-            "user":        user,
-            "processes":   user_procs[user],
-            "mem_used_mb": sum(gpu_map.values()),
-            "gpu_indices": sorted(gpu_map.keys()),
+            "user":         user,
+            "processes":    user_procs[user],
+            "mem_used_mb":  sum(gpu_map.values()),
+            "mem_total_mb": sum(g["mem_total"] for g in gpus if g["index"] in gpu_map),
+            "gpu_indices":  sorted(gpu_map.keys()),
         }
         for user, gpu_map in sorted(user_gpu_mem.items(), key=lambda x: -sum(x[1].values()))
     ],

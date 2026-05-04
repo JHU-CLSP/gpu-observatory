@@ -130,21 +130,33 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
             {stats.gpus.map((gpu) => {
               const isActive = gpu.util_pct > 0;
               const isIdle = stats.idle_allocated_gpus.some(idle => idle.gpu === gpu.index);
-              
+              const memPct = gpu.mem_total_mb > 0 ? (gpu.mem_used_mb / gpu.mem_total_mb) * 100 : 0;
+              const memUsedGb = (gpu.mem_used_mb / 1024).toFixed(0);
+              const memTotalGb = (gpu.mem_total_mb / 1024).toFixed(0);
+
               return (
                 <div
                   key={gpu.index}
-                  className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center p-2 ${
+                  className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-between p-1.5 overflow-hidden ${
                     isIdle
                       ? "border-amber-400 bg-amber-50 dark:bg-amber-950"
                       : isActive
                       ? "border-green-500 bg-green-50 dark:bg-green-950"
                       : "border-gray-200 bg-gray-50 dark:bg-gray-900"
                   }`}
-                  title={`GPU ${gpu.index} - ${gpu.util_pct}% utilization`}
+                  title={`GPU ${gpu.index} — util: ${gpu.util_pct}% | mem: ${memUsedGb}/${memTotalGb} GB (${memPct.toFixed(0)}%)`}
                 >
                   <div className="text-xs font-bold">GPU {gpu.index}</div>
                   <div className="text-xs text-muted-foreground">{gpu.util_pct}%</div>
+                  <div className="w-full space-y-0.5">
+                    <div className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${memPct < 20 ? "bg-red-400" : memPct < 50 ? "bg-amber-400" : "bg-blue-400"}`}
+                        style={{ width: `${memPct}%` }}
+                      />
+                    </div>
+                    <div className="text-center text-muted-foreground" style={{ fontSize: "9px" }}>{memPct.toFixed(0)}%m</div>
+                  </div>
                 </div>
               );
             })}
@@ -222,9 +234,28 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
                         <span className="text-amber-600 ml-1">(idle: {idleGPUs.join(", ")})</span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Memory: {(user.mem_used_mb / 1024).toFixed(2)} GB
-                    </div>
+                    {(() => {
+                      const memPct = user.mem_total_mb > 0 ? (user.mem_used_mb / user.mem_total_mb) * 100 : 0;
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Memory</span>
+                            <span>
+                              {(user.mem_used_mb / 1024).toFixed(1)} / {(user.mem_total_mb / 1024).toFixed(0)} GB
+                              <span className={`ml-1 font-medium ${memPct < 20 ? "text-red-500" : memPct < 50 ? "text-amber-500" : "text-blue-500"}`}>
+                                ({memPct.toFixed(0)}%)
+                              </span>
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${memPct < 20 ? "bg-red-400" : memPct < 50 ? "bg-amber-400" : "bg-blue-400"}`}
+                              style={{ width: `${memPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

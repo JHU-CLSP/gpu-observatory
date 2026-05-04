@@ -1,7 +1,7 @@
 import { DSAIStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, Users, AlertCircle, HardDrive, Moon, Clock, BarChart2 } from "lucide-react";
+import { Server, Users, AlertCircle, HardDrive, Moon, Clock, BarChart2, Activity } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason } from "./PendingReason";
 import { AccountUsageChart } from "./AccountUsageChart";
@@ -158,6 +158,56 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
           </div>
         )}
 
+        {/* Running Jobs — memory utilization */}
+        {stats.dkhasha1_running_jobs && stats.dkhasha1_running_jobs.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-green-500" />
+              Running Jobs
+              <span className="text-xs text-muted-foreground font-normal">GPU memory utilization</span>
+            </h4>
+            <div className="space-y-1.5">
+              {stats.dkhasha1_running_jobs.map((job) => {
+                const memPct = job.mem_total_mb && job.mem_total_mb > 0
+                  ? (job.mem_used_mb! / job.mem_total_mb) * 100
+                  : null;
+                return (
+                  <div key={job.jobid} className="border rounded-lg p-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono">{job.user}</span>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span>{job.partition} · {job.gpus} GPU{job.gpus !== 1 ? "s" : ""}</span>
+                        <span className="font-mono">#{job.jobid}</span>
+                      </div>
+                    </div>
+                    {memPct !== null ? (
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Mem</span>
+                          <span>
+                            {(job.mem_used_mb! / 1024).toFixed(1)} / {(job.mem_total_mb! / 1024).toFixed(0)} GB
+                            <span className={`ml-1 font-medium ${memPct < 20 ? "text-red-500" : memPct < 50 ? "text-amber-500" : "text-blue-500"}`}>
+                              ({memPct.toFixed(0)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${memPct < 20 ? "bg-red-400" : memPct < 50 ? "bg-amber-400" : "bg-blue-400"}`}
+                            style={{ width: `${memPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground italic">mem data not yet available</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Interactive Jobs */}
         {stats.interactive_jobs.length > 0 && (
           <div className="space-y-2">
@@ -227,9 +277,16 @@ export function DSAIServerCard({ stats, error }: DSAIServerCardProps) {
             </h4>
             <div className="space-y-1">
               {stats.idle_allocated_gpus.map((g, i) => (
-                <div key={i} className="text-xs bg-amber-50 dark:bg-amber-950 p-2 rounded flex items-center justify-between">
-                  <span className="font-mono">{g.node} · GPU {g.gpu_index}</span>
-                  <span className="text-muted-foreground">{g.users.join(", ")}</span>
+                <div key={i} className="text-xs bg-amber-50 dark:bg-amber-950 p-2 rounded space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono">{g.node} · GPU {g.gpu_index}</span>
+                    <span className="text-muted-foreground">{g.users.join(", ")}</span>
+                  </div>
+                  {g.mem_total_mb && g.mem_total_mb > 0 && (
+                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                      <span>{(g.mem_used_mb! / 1024).toFixed(1)} / {(g.mem_total_mb / 1024).toFixed(0)} GB mem held</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

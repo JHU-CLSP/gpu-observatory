@@ -139,6 +139,7 @@ print(f"{'TOTAL':<12} {grand_total:>6} {grand_alloc:>6} {grand_idle:>6} {grand_d
 log("Section 2: querying dkhasha1 running jobs...")
 user_gpus = {part: defaultdict(int) for part in PARTITIONS}
 users_seen = []
+dkhasha1_running_jobs_raw = []
 
 squeue_out = run([
     "squeue",
@@ -152,20 +153,25 @@ for line in squeue_out.splitlines():
     fields = line.split()
     if len(fields) < 3:
         continue
-    user = fields[1].strip()
-    part = fields[2].strip().rstrip("*")
-    tres = fields[3].strip() if len(fields) > 3 else ""
+    jobid = fields[0].strip()
+    user  = fields[1].strip()
+    part  = fields[2].strip().rstrip("*")
+    tres  = fields[3].strip() if len(fields) > 3 else ""
 
     if part not in PARTITIONS:
         continue
 
     m = re.search(r"gres/gpu=(\d+)", tres)
-    gpus = int(m.group(1)) if m else 0
+    gpus_count = int(m.group(1)) if m else 0
 
     if user not in users_seen:
         users_seen.append(user)
 
-    user_gpus[part][user] += gpus
+    user_gpus[part][user] += gpus_count
+    dkhasha1_running_jobs_raw.append({
+        "jobid": jobid, "user": user, "partition": part, "gpus": gpus_count,
+        "mem_used_mb": None, "mem_total_mb": None,
+    })
 
 # Sort users by total GPU usage descending
 def user_total(u):
@@ -251,11 +257,13 @@ squeue_nodes_out = run([
     "--noheader",
 ])
 
+job_to_nodes = {}        # jobid -> list of expanded nodes
 node_to_users = defaultdict(set)  # node -> set of users with GPU jobs there
 for line in squeue_nodes_out.splitlines():
     fields = line.split()
     if len(fields) < 3:
         continue
+    jobid    = fields[0].strip()
     user     = fields[1].strip()
     nodelist = fields[2].strip()
     tres     = fields[3].strip() if len(fields) > 3 else ""
@@ -264,17 +272,19 @@ for line in squeue_nodes_out.splitlines():
         continue
     # Expand compact SLURM node list e.g. "gpu[01-03]" -> ["gpu01","gpu02","gpu03"]
     expanded = run(["scontrol", "show", "hostnames", nodelist]).split()
-    for node in expanded:
-        if node:
-            node_to_users[node].add(user)
+    nodes = [n for n in expanded if n]
+    job_to_nodes[jobid] = nodes
+    for node in nodes:
+        node_to_users[node].add(user)
 
-idle_allocated_gpus = []  # {node, gpu_index, util_pct, users}
+idle_allocated_gpus = []  # {node, gpu_index, util_pct, users, mem_used_mb, mem_total_mb}
+node_gpu_memory = {}      # node -> {gpu_index: {mem_used_mb, mem_total_mb, util_pct}}
 
 log(f"Section 4: SSHing into {len(node_to_users)} nodes to check nvidia-smi...")
 for node, users in sorted(node_to_users.items()):
     log(f"  ssh {node} nvidia-smi...")
     cmd = (
-        "nvidia-smi --query-gpu=index,utilization.gpu,uuid --format=csv,noheader,nounits 2>/dev/null; "
+        "nvidia-smi --query-gpu=index,utilization.gpu,uuid,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null; "
         "echo '---SEP---'; "
         "nvidia-smi --query-compute-apps=gpu_uuid,used_memory --format=csv,noheader,nounits 2>/dev/null"
     )
@@ -289,16 +299,31 @@ for node, users in sorted(node_to_users.items()):
 
     gpu_part, apps_part = out.split("---SEP---", 1)
 
-    # Parse GPU info: index -> {util_pct, uuid}
+    # Parse GPU info: index -> {util_pct, uuid, mem_used_mb, mem_total_mb}
     gpu_info = {}
     for gline in gpu_part.strip().splitlines():
         parts = [p.strip() for p in gline.split(",")]
-        if len(parts) < 3:
+        if len(parts) < 5:
             continue
         try:
-            gpu_info[int(parts[0])] = {"util_pct": int(parts[1]), "uuid": parts[2]}
+            gpu_info[int(parts[0])] = {
+                "util_pct":    int(parts[1]),
+                "uuid":        parts[2],
+                "mem_used_mb": int(parts[3]),
+                "mem_total_mb": int(parts[4]),
+            }
         except ValueError:
             continue
+
+    # Store memory stats for every GPU on this node
+    node_gpu_memory[node] = {
+        idx: {
+            "mem_used_mb":  info["mem_used_mb"],
+            "mem_total_mb": info["mem_total_mb"],
+            "util_pct":     info["util_pct"],
+        }
+        for idx, info in gpu_info.items()
+    }
 
     # UUIDs that have active compute processes
     active_uuids = set()
@@ -313,13 +338,27 @@ for node, users in sorted(node_to_users.items()):
         idx = uuid_to_idx.get(uuid)
         if idx is not None and gpu_info[idx]["util_pct"] == 0:
             idle_allocated_gpus.append({
-                "node":      node,
-                "gpu_index": idx,
-                "util_pct":  0,
-                "users":     sorted(users),
+                "node":        node,
+                "gpu_index":   idx,
+                "util_pct":    0,
+                "users":       sorted(users),
+                "mem_used_mb":  gpu_info[idx]["mem_used_mb"],
+                "mem_total_mb": gpu_info[idx]["mem_total_mb"],
             })
 
 idle_allocated_gpus.sort(key=lambda x: (x["node"], x["gpu_index"]))
+
+# Annotate running jobs with aggregate GPU memory from the nodes they occupy
+for job in dkhasha1_running_jobs_raw:
+    nodes = job_to_nodes.get(job["jobid"], [])
+    total_used = total_mem = 0
+    for node in nodes:
+        for mem_data in node_gpu_memory.get(node, {}).values():
+            total_used += mem_data["mem_used_mb"]
+            total_mem  += mem_data["mem_total_mb"]
+    if total_mem > 0:
+        job["mem_used_mb"]  = total_used
+        job["mem_total_mb"] = total_mem
 
 print()
 if idle_allocated_gpus:
@@ -653,6 +692,7 @@ report = {
         "idle":  grand_idle,
         "down":  grand_down,
     },
+    "dkhasha1_running_jobs": dkhasha1_running_jobs_raw,
     "dkhasha1_users": [
         {
             "user":  u,

@@ -72,6 +72,17 @@ export interface DSAIIdleGPU {
   gpu_index: number;
   util_pct: number;
   users: string[];
+  mem_used_mb?: number;
+  mem_total_mb?: number;
+}
+
+export interface DSAIRunningJob {
+  jobid: string;
+  user: string;
+  partition: string;
+  gpus: number;
+  mem_used_mb: number | null;
+  mem_total_mb: number | null;
 }
 
 export interface DSAIAccountUsage {
@@ -94,6 +105,7 @@ export interface B200Stats {
 export interface DSAIStats {
   timestamp: string;
   server: "dsai";
+  dkhasha1_running_jobs?: DSAIRunningJob[];
   partitions: DSAIPartition[];
   partition_totals: {
     total: number;
@@ -151,12 +163,15 @@ export interface IA1GPU {
   index: number;
   name: string;
   util_pct: number;
+  mem_used_mb: number;
+  mem_total_mb: number;
 }
 
 export interface IA1User {
   user: string;
   processes: number;
   mem_used_mb: number;
+  mem_total_mb: number;
   gpu_indices: number[];
 }
 
