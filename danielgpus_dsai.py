@@ -107,7 +107,7 @@ for line in scontrol_out.splitlines():
                 current_gres_total = int(count.group())
 
     if "AllocTRES=" in line:
-        m = re.search(r"gres/gpu=(\d+)", line)
+        m = re.search(r"gres/gpu[^=,\s]*=(\d+)", line)
         if m:
             current_gres_alloc = int(m.group(1))
 
@@ -161,7 +161,7 @@ for line in squeue_out.splitlines():
     if part not in PARTITIONS:
         continue
 
-    m = re.search(r"gres/gpu=(\d+)", tres)
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     gpus_count = int(m.group(1)) if m else 0
 
     if user not in users_seen:
@@ -230,7 +230,7 @@ for line in iqueue_out.splitlines():
     tres  = fields[4].strip() if len(fields) > 4 else ""
 
     if name in INTERACTIVE_NAMES:
-        m = re.search(r"gres/gpu=(\d+)", tres)
+        m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
         gpus = int(m.group(1)) if m else 0
         if gpus > 0:
             interactive_jobs.append({"jobid": jobid, "user": user, "partition": part, "name": name, "gpus": gpus})
@@ -267,7 +267,7 @@ for line in squeue_nodes_out.splitlines():
     user     = fields[1].strip()
     nodelist = fields[2].strip()
     tres     = fields[3].strip() if len(fields) > 3 else ""
-    m = re.search(r"gres/gpu=(\d+)", tres)
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     if not m or int(m.group(1)) == 0:
         continue
     # Expand compact SLURM node list e.g. "gpu[01-03]" -> ["gpu01","gpu02","gpu03"]
@@ -611,7 +611,7 @@ for line in all_accounts_out.splitlines():
     account = fields[0].strip()
     part    = fields[1].strip().rstrip("*")
     tres    = fields[2].strip()
-    m = re.search(r"gres/gpu=(\d+)", tres)
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     if m:
         cluster_account_gpus[account][part] += int(m.group(1))
 
