@@ -692,6 +692,14 @@ report = {
         "idle":  grand_idle,
         "down":  grand_down,
     },
+    "_debug": {
+        "job_to_nodes_count":       len(job_to_nodes),
+        "node_gpu_memory_count":    len(node_gpu_memory),
+        "running_jobs_total":       len(dkhasha1_running_jobs_raw),
+        "running_jobs_with_memory": sum(1 for j in dkhasha1_running_jobs_raw if j["mem_total_mb"] is not None),
+        "sample_jobids_in_raw":     [j["jobid"] for j in dkhasha1_running_jobs_raw[:3]],
+        "sample_jobids_in_map":     list(job_to_nodes.keys())[:3],
+    },
     "dkhasha1_running_jobs": dkhasha1_running_jobs_raw,
     "dkhasha1_users": [
         {
