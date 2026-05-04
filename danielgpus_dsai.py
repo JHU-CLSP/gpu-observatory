@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 from datetime import datetime
 
 REMOTE = "dsai"
@@ -139,7 +139,6 @@ print(f"{'TOTAL':<12} {grand_total:>6} {grand_alloc:>6} {grand_idle:>6} {grand_d
 log("Section 2: querying dkhasha1 running jobs...")
 user_gpus = {part: defaultdict(int) for part in PARTITIONS}
 users_seen = []
-dkhasha1_running_jobs_raw = []
 
 squeue_out = run([
     "squeue",
@@ -153,7 +152,6 @@ for line in squeue_out.splitlines():
     fields = line.split()
     if len(fields) < 3:
         continue
-    jobid = fields[0].strip()
     user  = fields[1].strip()
     part  = fields[2].strip().rstrip("*")
     tres  = fields[3].strip() if len(fields) > 3 else ""
@@ -168,10 +166,6 @@ for line in squeue_out.splitlines():
         users_seen.append(user)
 
     user_gpus[part][user] += gpus_count
-    dkhasha1_running_jobs_raw.append({
-        "jobid": jobid, "user": user, "partition": part, "gpus": gpus_count,
-        "mem_used_mb": None, "mem_total_mb": None,
-    })
 
 # Sort users by total GPU usage descending
 def user_total(u):
@@ -248,177 +242,10 @@ print()
 # Finds GPUs our team has allocated but is not actively using.
 # ============================================================
 
-log("Section 4: querying node lists for idle GPU check...")
-squeue_nodes_out = run([
-    "squeue",
-    "-O", "JobID:12,UserName:20,NodeList:100,tres-alloc:100",
-    "--account=dkhasha1",
-    "-t", "R",
-    "--noheader",
-])
-
-job_to_nodes = {}        # jobid -> list of expanded nodes
-node_to_users = defaultdict(set)  # node -> set of users with GPU jobs there
-for line in squeue_nodes_out.splitlines():
-    fields = line.split()
-    if len(fields) < 3:
-        continue
-    jobid    = fields[0].strip()
-    user     = fields[1].strip()
-    nodelist = fields[2].strip()
-    tres     = fields[3].strip() if len(fields) > 3 else ""
-    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
-    if not m or int(m.group(1)) == 0:
-        continue
-    # Expand compact SLURM node list e.g. "gpu[01-03]" -> ["gpu01","gpu02","gpu03"]
-    expanded = run(["scontrol", "show", "hostnames", nodelist]).split()
-    nodes = [n for n in expanded if n]
-    job_to_nodes[jobid] = nodes
-    for node in nodes:
-        node_to_users[node].add(user)
-
-idle_allocated_gpus = []  # {node, gpu_index, util_pct, users, mem_used_mb, mem_total_mb}
-node_gpu_memory = {}      # node -> {gpu_index: {mem_used_mb, mem_total_mb, util_pct}}
-
-log(f"Section 4: SSHing into {len(node_to_users)} nodes to check nvidia-smi...")
-for node, users in sorted(node_to_users.items()):
-    log(f"  ssh {node} nvidia-smi...")
-    cmd = (
-        "nvidia-smi --query-gpu=index,utilization.gpu,uuid,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null; "
-        "echo '---SEP---'; "
-        "nvidia-smi --query-compute-apps=gpu_uuid,used_memory --format=csv,noheader,nounits 2>/dev/null"
-    )
-    out = run(["ssh",
-               "-o", "StrictHostKeyChecking=no",
-               "-o", "ConnectTimeout=5",
-               "-o", "BatchMode=yes",
-               node, cmd])
-
-    if "---SEP---" not in out:
-        continue  # SSH failed or nvidia-smi not available
-
-    gpu_part, apps_part = out.split("---SEP---", 1)
-
-    # Parse GPU info: index -> {util_pct, uuid, mem_used_mb, mem_total_mb}
-    gpu_info = {}
-    for gline in gpu_part.strip().splitlines():
-        parts = [p.strip() for p in gline.split(",")]
-        if len(parts) < 5:
-            continue
-        try:
-            gpu_info[int(parts[0])] = {
-                "util_pct":    int(parts[1]),
-                "uuid":        parts[2],
-                "mem_used_mb": int(parts[3]),
-                "mem_total_mb": int(parts[4]),
-            }
-        except ValueError:
-            continue
-
-    # Store memory stats for every GPU on this node
-    node_gpu_memory[node] = {
-        idx: {
-            "mem_used_mb":  info["mem_used_mb"],
-            "mem_total_mb": info["mem_total_mb"],
-            "util_pct":     info["util_pct"],
-        }
-        for idx, info in gpu_info.items()
-    }
-
-    # UUIDs that have active compute processes
-    active_uuids = set()
-    for aline in apps_part.strip().splitlines():
-        parts = [p.strip() for p in aline.split(",")]
-        if parts and parts[0]:
-            active_uuids.add(parts[0])
-
-    uuid_to_idx = {v["uuid"]: k for k, v in gpu_info.items()}
-
-    for uuid in active_uuids:
-        idx = uuid_to_idx.get(uuid)
-        if idx is not None and gpu_info[idx]["util_pct"] == 0:
-            idle_allocated_gpus.append({
-                "node":        node,
-                "gpu_index":   idx,
-                "util_pct":    0,
-                "users":       sorted(users),
-                "mem_used_mb":  gpu_info[idx]["mem_used_mb"],
-                "mem_total_mb": gpu_info[idx]["mem_total_mb"],
-            })
-
-idle_allocated_gpus.sort(key=lambda x: (x["node"], x["gpu_index"]))
-
-# Annotate running jobs with memory from the SSH-based node_gpu_memory map (if SSH worked)
-for job in dkhasha1_running_jobs_raw:
-    nodes = job_to_nodes.get(job["jobid"], [])
-    total_used = total_mem = 0
-    for node in nodes:
-        for mem_data in node_gpu_memory.get(node, {}).values():
-            total_used += mem_data["mem_used_mb"]
-            total_mem  += mem_data["mem_total_mb"]
-    if total_mem > 0:
-        job["mem_used_mb"]  = total_used
-        job["mem_total_mb"] = total_mem
-
-# ============================================================
-# Section 4b: GPU memory via srun --overlap (fallback when SSH unavailable)
-# Runs nvidia-smi inside each job's SLURM allocation — no SSH keys needed.
-# ============================================================
-
-def _srun_gpu_memory(jobid, timeout=20):
-    """Return (mem_used_mb, mem_total_mb) summed across all allocated GPUs."""
-    try:
-        result = subprocess.run(
-            [
-                "srun", "--overlap",
-                f"--jobid={jobid}",
-                "--ntasks-per-node=1",
-                "nvidia-smi",
-                "--query-gpu=memory.used,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            universal_newlines=True, timeout=timeout,
-        )
-        used = total = 0
-        for line in result.stdout.strip().splitlines():
-            parts = [p.strip() for p in line.split(",")]
-            if len(parts) < 2:
-                continue
-            try:
-                used  += int(parts[0])
-                total += int(parts[1])
-            except ValueError:
-                pass
-        return used, total
-    except (subprocess.TimeoutExpired, OSError):
-        return 0, 0
-
-jobs_needing_memory = [
-    j for j in dkhasha1_running_jobs_raw
-    if j["mem_total_mb"] is None and j["jobid"] in job_to_nodes
-]
-
-log(f"Section 4b: fetching GPU memory via srun --overlap for {len(jobs_needing_memory)} jobs...")
-
-def _annotate_job_memory(job):
-    used, total = _srun_gpu_memory(job["jobid"])
-    if total > 0:
-        job["mem_used_mb"]  = used
-        job["mem_total_mb"] = total
-
-with ThreadPoolExecutor(max_workers=min(8, len(jobs_needing_memory) or 1)) as pool:
-    list(pool.map(_annotate_job_memory, jobs_needing_memory))
+idle_allocated_gpus = []  # SSH to compute nodes blocked by PAM on this cluster
 
 print()
-if idle_allocated_gpus:
-    print(f"=== dkhasha1 idle-allocated GPUs: {len(idle_allocated_gpus)} ===")
-    print(f"{'NODE':<20} {'GPU':>4}  {'USERS'}")
-    print(f"{'-------------------':<20} {'---':>4}  {'-----'}")
-    for g in idle_allocated_gpus:
-        print(f"{g['node']:<20} {g['gpu_index']:>4}  {','.join(g['users'])}")
-else:
-    print("=== dkhasha1 idle-allocated GPUs: none ===")
+print("=== dkhasha1 idle-allocated GPUs: not available (PAM blocks SSH to compute nodes) ===")
 
 # ============================================================
 # Section 5: Pending jobs (dkhasha1 account)
@@ -742,14 +569,6 @@ report = {
         "idle":  grand_idle,
         "down":  grand_down,
     },
-    "_debug": {
-        "job_to_nodes_count":       len(job_to_nodes),
-        "node_gpu_memory_count":    len(node_gpu_memory),
-        "running_jobs_total":       len(dkhasha1_running_jobs_raw),
-        "running_jobs_with_memory": sum(1 for j in dkhasha1_running_jobs_raw if j["mem_total_mb"] is not None),
-        "sample_nodes_tried":       list(node_to_users.keys())[:5],
-    },
-    "dkhasha1_running_jobs": dkhasha1_running_jobs_raw,
     "dkhasha1_users": [
         {
             "user":  u,
