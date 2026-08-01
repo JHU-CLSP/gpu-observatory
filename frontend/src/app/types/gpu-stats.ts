@@ -189,6 +189,46 @@ export interface IA1Stats {
   scratch_space_used_tb: number;
 }
 
+export interface DevDanielkGPU {
+  index: number;
+  name: string;
+  util_pct: number;
+  mem_used_mb: number;
+  mem_total_mb: number;
+  power_draw_w: number;
+  power_limit_w: number;
+}
+
+export interface DevDanielkUser {
+  user: string;
+  processes: number;
+  mem_used_mb: number;
+  mem_total_mb: number;
+  gpu_indices: number[];
+}
+
+export interface DevDanielkIdleGPU {
+  gpu: number;
+  user: string;
+}
+
+export interface DevDanielkStats {
+  timestamp: string;
+  server: "devdanielk";
+  summary: {
+    total_gpus: number;
+    allocated_gpus: number;
+    active_gpus: number;
+    idle_allocated: number;
+    total_mem_mb: number;
+    total_mem_used_mb: number;
+    total_mem_free_mb: number;
+  };
+  gpus: DevDanielkGPU[];
+  users: DevDanielkUser[];
+  idle_allocated_gpus: DevDanielkIdleGPU[];
+}
+
 export interface HistoricalDataPoint {
   timestamp: string;
   dsai_team_usage: number;
@@ -202,4 +242,6 @@ export interface HistoricalDataPoint {
   ia1_active: number;
   ia1_allocated: number;
   ia1_pending_gpus: number;
+  devdanielk_active: number;
+  devdanielk_allocated: number;
 }

@@ -31,6 +31,7 @@ SCRIPTS: dict[str, Path] = {
     "dsai": Path(__file__).parent / "danielgpus_dsai.py",
     "rockfish": Path(__file__).parent / "danielgpus_rockfish.py",
     "ia1": Path(__file__).parent / "danielgpus_ia1.py",
+    "devdanielk": Path(__file__).parent / "danielgpus_devdanielk.py",
 }
 
 # ---------------------------------------------------------------------------
@@ -52,10 +53,11 @@ def _snapshot_to_history_point() -> dict | None:
     dsai = _cache.get("dsai", {}).get("data", {})
     rockfish = _cache.get("rockfish", {}).get("data", {})
     ia1 = _cache.get("ia1", {}).get("data", {})
+    devdanielk = _cache.get("devdanielk", {}).get("data", {})
 
-    if not dsai or not rockfish or not ia1:
+    if not dsai or not rockfish or not ia1 or not devdanielk:
         return None
-    if dsai.get("error") or rockfish.get("error") or ia1.get("error"):
+    if dsai.get("error") or rockfish.get("error") or ia1.get("error") or devdanielk.get("error"):
         return None
 
     return {
@@ -71,6 +73,8 @@ def _snapshot_to_history_point() -> dict | None:
         "ia1_active": ia1.get("summary", {}).get("active_gpus", 0),
         "ia1_allocated": ia1.get("summary", {}).get("allocated_gpus", 0),
         "ia1_pending_gpus": ia1.get("pending_summary", {}).get("total_gpus_requested", 0),
+        "devdanielk_active": devdanielk.get("summary", {}).get("active_gpus", 0),
+        "devdanielk_allocated": devdanielk.get("summary", {}).get("allocated_gpus", 0),
     }
 
 
@@ -177,8 +181,9 @@ async def get_all_stats():
         _get_cached_or_fetch("dsai"),
         _get_cached_or_fetch("rockfish"),
         _get_cached_or_fetch("ia1"),
+        _get_cached_or_fetch("devdanielk"),
     )
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2]}
+    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
 
 
 @app.get("/stats/dsai")
@@ -196,17 +201,23 @@ async def get_ia1_stats():
     return await _get_cached_or_fetch("ia1")
 
 
+@app.get("/stats/devdanielk")
+async def get_devdanielk_stats():
+    return await _get_cached_or_fetch("devdanielk")
+
+
 @app.post("/stats/refresh")
 async def refresh_all():
     results = await asyncio.gather(
         _fetch_server("dsai"),
         _fetch_server("rockfish"),
         _fetch_server("ia1"),
+        _fetch_server("devdanielk"),
     )
     point = _snapshot_to_history_point()
     if point:
         _history.append(point)
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2]}
+    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
 
 
 @app.post("/stats/{server}/refresh")
