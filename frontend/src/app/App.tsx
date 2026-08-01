@@ -182,25 +182,6 @@ export default function App() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-            <div className="text-sm text-muted-foreground mb-2">Rockfish Team Usage</div>
-            {rockfishStats ? (
-              <>
-                <div className="text-3xl font-bold text-blue-600">
-                  {rockfishStats.dkhasha1_totals.total}
-                  <span className="text-lg text-muted-foreground"> GPUs</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  No limit • {rockfishStats.dkhasha1_totals.total > 0 ? "Active" : "Idle"}
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
-                <AlertCircle className="h-4 w-4" /> Unavailable
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">IA1 Active GPUs</div>
             {ia1Stats ? (
               <>
@@ -247,6 +228,25 @@ export default function App() {
               </div>
             )}
           </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+            <div className="text-sm text-muted-foreground mb-2">Rockfish Team Usage</div>
+            {rockfishStats ? (
+              <>
+                <div className="text-3xl font-bold text-blue-600">
+                  {rockfishStats.dkhasha1_totals.total}
+                  <span className="text-lg text-muted-foreground"> GPUs</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  No limit • {rockfishStats.dkhasha1_totals.total > 0 ? "Active" : "Idle"}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Historical Chart */}
@@ -261,9 +261,9 @@ export default function App() {
           </div>
           <H200ServerCard stats={dsaiStats} error={dsaiError} />
           <B200ServerCard stats={dsaiStats} error={dsaiError} />
-          <RockfishServerCard stats={rockfishStats} error={rockfishError} />
           <IA1ServerCard stats={ia1Stats} error={ia1Error} />
           <DevDanielkServerCard stats={devdanielkStats} error={devdanielkError} />
+          <RockfishServerCard stats={rockfishStats} error={rockfishError} />
         </div>
 
         {/* Footer */}
