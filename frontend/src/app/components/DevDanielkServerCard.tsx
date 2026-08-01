@@ -17,7 +17,7 @@ export function DevDanielkServerCard({ stats, error }: DevDanielkServerCardProps
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Server className="h-5 w-5" />
-              <CardTitle>devdanielk Node</CardTitle>
+              <CardTitle>devdanielk (RTX 6000) Node</CardTitle>
             </div>
             <Badge variant="default">Unscheduled</Badge>
           </div>
