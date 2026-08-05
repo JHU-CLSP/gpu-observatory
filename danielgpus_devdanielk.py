@@ -5,13 +5,13 @@ Shows per-GPU utilization, memory, and per-user GPU usage.
 Not part of SLURM — no scheduler, no partitions, no queue. Users SSH in
 directly and run jobs, so there is no pending-jobs section here.
 
-Run locally — if nvidia-smi isn't found, re-executes itself on the
-devdanielk remote server via SSH automatically.
+Re-executes itself on the devdanielk remote server via SSH automatically
+unless already running there (see _GPUSTATS_ON_REMOTE below).
 """
 
 import json
+import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -19,8 +19,11 @@ from datetime import datetime
 
 REMOTE = "devdanielk"
 
-if not shutil.which("nvidia-smi"):
-    sys.exit(subprocess.run(["ssh", REMOTE, "python3", "-"], stdin=open(__file__)).returncode)
+if os.environ.get("_GPUSTATS_ON_REMOTE") != "1":
+    sys.exit(subprocess.run(
+        ["ssh", REMOTE, "env", "_GPUSTATS_ON_REMOTE=1", "python3", "-"],
+        stdin=open(__file__)
+    ).returncode)
 
 
 def run(cmd):
