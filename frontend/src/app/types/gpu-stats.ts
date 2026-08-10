@@ -229,6 +229,48 @@ export interface DevDanielkStats {
   idle_allocated_gpus: DevDanielkIdleGPU[];
 }
 
+export interface SkipjackPartition {
+  name: string;
+  is_default: boolean;
+  state: string;
+  max_time: string;
+  is_gpu: boolean;
+}
+
+export interface SkipjackSummary {
+  jobs: number;
+  cpu_hours: number;
+  gpu_hours: number;
+  node_hours: number;
+}
+
+export interface SkipjackMember extends SkipjackSummary {
+  user: string;
+}
+
+export interface SkipjackStats {
+  timestamp: string;
+  server: "skipjack";
+  source: string;
+  data_kind: "accounting";
+  cluster: {
+    name: string;
+    type: string | null;
+    is_active: boolean | null;
+    api_version: string | null;
+  };
+  partitions: SkipjackPartition[];
+  gpu_partitions: string[];
+  project: {
+    title: string | null;
+    pi: string | null;
+    status: string | null;
+    member_count: number;
+  };
+  team_summary: SkipjackSummary;
+  members: SkipjackMember[];
+}
+
 export interface HistoricalDataPoint {
   timestamp: string;
   dsai_team_usage: number;

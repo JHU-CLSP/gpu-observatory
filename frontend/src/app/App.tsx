@@ -5,8 +5,9 @@ import { B200ServerCard } from "./components/B200ServerCard";
 import { RockfishServerCard } from "./components/RockfishServerCard";
 import { IA1ServerCard } from "./components/IA1ServerCard";
 import { DevDanielkServerCard } from "./components/DevDanielkServerCard";
+import { SkipjackServerCard } from "./components/SkipjackServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
-import { DSAIStats, RockfishStats, IA1Stats, DevDanielkStats, HistoricalDataPoint } from "./types/gpu-stats";
+import { DSAIStats, RockfishStats, IA1Stats, DevDanielkStats, SkipjackStats, HistoricalDataPoint } from "./types/gpu-stats";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 import { Button } from "./components/ui/button";
@@ -19,6 +20,7 @@ export default function App() {
   const [rockfishStats, setRockfishStats] = useState<RockfishStats | null>(null);
   const [ia1Stats, setIa1Stats] = useState<IA1Stats | null>(null);
   const [devdanielkStats, setDevdanielkStats] = useState<DevDanielkStats | null>(null);
+  const [skipjackStats, setSkipjackStats] = useState<SkipjackStats | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -27,14 +29,16 @@ export default function App() {
   const [rockfishError, setRockfishError] = useState<string | null>(null);
   const [ia1Error, setIa1Error] = useState<string | null>(null);
   const [devdanielkError, setDevdanielkError] = useState<string | null>(null);
+  const [skipjackError, setSkipjackError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
-      const [dsai, rockfish, ia1, devdanielk, history] = await Promise.all([
+      const [dsai, rockfish, ia1, devdanielk, skipjack, history] = await Promise.all([
         fetch(`${API_BASE}/stats/dsai`).then(r => r.json()),
         fetch(`${API_BASE}/stats/rockfish`).then(r => r.json()),
         fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
         fetch(`${API_BASE}/stats/devdanielk`).then(r => r.json()),
+        fetch(`${API_BASE}/stats/skipjack`).then(r => r.json()),
         fetch(`${API_BASE}/stats/history`).then(r => r.json()),
       ]);
 
@@ -49,6 +53,9 @@ export default function App() {
 
       if (devdanielk.error) { setDevdanielkError(devdanielk.error); setDevdanielkStats(null); }
       else { setDevdanielkStats(devdanielk); setDevdanielkError(null); }
+
+      if (skipjack.error) { setSkipjackError(skipjack.error); setSkipjackStats(null); }
+      else { setSkipjackStats(skipjack); setSkipjackError(null); }
 
       setHistoricalData(history);
       setLastUpdate(new Date());
@@ -80,8 +87,8 @@ export default function App() {
   }, []);
 
   // Only block the full page on initial load (nothing yet) or backend unreachable
-  const nothingLoaded = !dsaiStats && !rockfishStats && !ia1Stats && !devdanielkStats
-    && !dsaiError && !rockfishError && !ia1Error && !devdanielkError;
+  const nothingLoaded = !dsaiStats && !rockfishStats && !ia1Stats && !devdanielkStats && !skipjackStats
+    && !dsaiError && !rockfishError && !ia1Error && !devdanielkError && !skipjackError;
   if (fetchError || nothingLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -137,7 +144,7 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">DSAI Team Usage</div>
             {dsaiStats ? (
@@ -247,6 +254,24 @@ export default function App() {
               </div>
             )}
           </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+            <div className="text-sm text-muted-foreground mb-2">Skipjack GPU-hours</div>
+            {skipjackStats ? (
+              <>
+                <div className="text-3xl font-bold text-indigo-600">
+                  {skipjackStats.team_summary.gpu_hours.toFixed(1)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Team total • {skipjackStats.team_summary.jobs} jobs (accounting)
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Historical Chart */}
@@ -264,6 +289,9 @@ export default function App() {
           <IA1ServerCard stats={ia1Stats} error={ia1Error} />
           <DevDanielkServerCard stats={devdanielkStats} error={devdanielkError} />
           <RockfishServerCard stats={rockfishStats} error={rockfishError} />
+          <div className="md:col-span-2">
+            <SkipjackServerCard stats={skipjackStats} error={skipjackError} />
+          </div>
         </div>
 
         {/* Footer */}

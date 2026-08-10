@@ -32,6 +32,7 @@ SCRIPTS: dict[str, Path] = {
     "rockfish": Path(__file__).parent / "danielgpus_rockfish.py",
     "ia1": Path(__file__).parent / "danielgpus_ia1.py",
     "devdanielk": Path(__file__).parent / "danielgpus_devdanielk.py",
+    "skipjack": Path(__file__).parent / "danielgpus_skipjack.py",
 }
 
 # ---------------------------------------------------------------------------
@@ -182,8 +183,10 @@ async def get_all_stats():
         _get_cached_or_fetch("rockfish"),
         _get_cached_or_fetch("ia1"),
         _get_cached_or_fetch("devdanielk"),
+        _get_cached_or_fetch("skipjack"),
     )
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
+    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2],
+            "devdanielk": results[3], "skipjack": results[4]}
 
 
 @app.get("/stats/dsai")
@@ -206,6 +209,11 @@ async def get_devdanielk_stats():
     return await _get_cached_or_fetch("devdanielk")
 
 
+@app.get("/stats/skipjack")
+async def get_skipjack_stats():
+    return await _get_cached_or_fetch("skipjack")
+
+
 @app.post("/stats/refresh")
 async def refresh_all():
     results = await asyncio.gather(
@@ -213,11 +221,13 @@ async def refresh_all():
         _fetch_server("rockfish"),
         _fetch_server("ia1"),
         _fetch_server("devdanielk"),
+        _fetch_server("skipjack"),
     )
     point = _snapshot_to_history_point()
     if point:
         _history.append(point)
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
+    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2],
+            "devdanielk": results[3], "skipjack": results[4]}
 
 
 @app.post("/stats/{server}/refresh")
