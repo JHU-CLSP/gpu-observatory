@@ -14,10 +14,17 @@ What this collector surfaces:
   * team-wide job accounting (jobs, cpu_hours, gpu_hours, node_hours)
   * per-member accounting rollups (looped over the project roster)
 
-Token: read from the TOKEN env var, or from the TOKEN=... line in .env next to
-this file. Never hardcode, never log, never emit it in output. On a 401
-(expired/invalid token) the collector fails gracefully with a clear error
-(strategy "B" in the brief) rather than crashing the whole dashboard.
+Auth (strategy "A" in the brief — automatic token refresh):
+  Config is read from env vars or the .env file next to this script:
+    TOKEN        — current API token (Authorization: Token <token>)
+    CF_USERNAME  — ARCH portal username  (for token refresh)
+    CF_PASSWORD  — ARCH portal password  (for token refresh)
+  ARCH tokens expire monthly. On a 401 the collector POSTs the credentials to
+  /auth/token/ to mint a fresh token, rewrites TOKEN in .env, and retries the
+  request once. If credentials are absent or refresh fails, it degrades
+  gracefully (fails just this source with a clear message).
+
+  Secrets are never logged or emitted in output. Keep .env out of git.
 """
 
 from __future__ import annotations
@@ -35,31 +42,106 @@ from pathlib import Path
 BASE = os.environ.get("CF_API", "https://portal.arch.jhu.edu/api/v1").rstrip("/")
 TIMEOUT = 20
 MAX_RETRIES = 3
+ENV_PATH = Path(__file__).parent / ".env"
 
 
-def _load_token() -> str:
-    tok = os.environ.get("CF_TOKEN") or os.environ.get("TOKEN")
-    if tok:
-        return tok.strip()
-    env_path = Path(__file__).parent / ".env"
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
+def _read_env_file() -> dict:
+    """Parse simple KEY=VALUE lines from the .env file next to this script."""
+    values: dict = {}
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text().splitlines():
             line = line.strip()
-            if line.startswith("TOKEN=") and not line.startswith("#"):
-                return line.split("=", 1)[1].strip()
-    raise RuntimeError("No API token found (set CF_TOKEN/TOKEN env var or .env)")
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            values[k.strip()] = v.strip()
+    return values
 
 
-TOKEN = _load_token()
+_ENV = _read_env_file()
+
+
+def _cfg(name: str, *aliases: str) -> str | None:
+    for key in (name, *aliases):
+        val = os.environ.get(key) or _ENV.get(key)
+        if val:
+            return val.strip()
+    return None
+
+
+TOKEN = _cfg("TOKEN", "CF_TOKEN")
+USERNAME = _cfg("CF_USERNAME", "USERNAME")
+PASSWORD = _cfg("CF_PASSWORD", "PASSWORD")
+
+if not TOKEN and not (USERNAME and PASSWORD):
+    raise RuntimeError("No credentials: set TOKEN, or CF_USERNAME+CF_PASSWORD, in env/.env")
 
 
 class AuthError(Exception):
-    """401/403 — token expired or not permitted. Surface, do not retry."""
+    """401/403 — token expired or not permitted, and refresh was not possible."""
 
 
-def _get(path: str, params: dict | None = None):
+def _persist_token(new_token: str) -> None:
+    """Rewrite the TOKEN=... line in .env (or append it) so the fresh token
+    survives across runs. Never touches any other line. Best-effort."""
+    try:
+        if ENV_PATH.exists():
+            lines = ENV_PATH.read_text().splitlines()
+        else:
+            lines = []
+        replaced = False
+        for i, line in enumerate(lines):
+            if line.strip().startswith("TOKEN=") and not line.strip().startswith("#"):
+                lines[i] = f"TOKEN={new_token}"
+                replaced = True
+                break
+        if not replaced:
+            lines.append(f"TOKEN={new_token}")
+        ENV_PATH.write_text("\n".join(lines) + "\n")
+    except Exception as e:  # noqa: BLE001 — persistence is best-effort
+        print(f"[skipjack] warning: could not persist refreshed token: {e}", file=sys.stderr)
+
+
+def _refresh_token() -> bool:
+    """POST credentials to /auth/token/ to mint a fresh token (strategy A).
+    Rotates an expired token per the brief. Updates the module-global TOKEN and
+    persists it to .env. Returns True on success."""
+    global TOKEN
+    if not (USERNAME and PASSWORD):
+        return False
+    data = urllib.parse.urlencode(
+        {"username": USERNAME, "password": PASSWORD}
+    ).encode()
+    req = urllib.request.Request(
+        f"{BASE}/auth/token/",
+        data=data,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            payload = json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[skipjack] token refresh failed: {e}", file=sys.stderr)
+        return False
+    # DRF's obtain_auth_token returns {"token": "..."}; accept a couple aliases.
+    new_token = payload.get("token") or payload.get("key") or payload.get("access")
+    if not new_token:
+        print("[skipjack] token refresh: no token field in response", file=sys.stderr)
+        return False
+    TOKEN = new_token.strip()
+    _persist_token(TOKEN)
+    print("[skipjack] token refreshed and persisted to .env", file=sys.stderr)
+    return True
+
+
+def _get(path: str, params: dict | None = None, _refreshed: bool = False):
     """GET a JSON endpoint with the auth header. Retries on 429/5xx with
-    exponential backoff; raises AuthError on 401/403; returns parsed JSON."""
+    exponential backoff. On 401 attempts a one-time token refresh (strategy A)
+    and retries; if that fails, raises AuthError. Returns parsed JSON."""
     url = f"{BASE}/{path.lstrip('/')}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
@@ -80,8 +162,12 @@ def _get(path: str, params: dict | None = None):
                     raise ValueError(f"non-JSON response ({ctype or 'unknown'})")
                 return json.loads(body)
         except urllib.error.HTTPError as e:
+            if e.code == 401 and not _refreshed and _refresh_token():
+                # Fresh token in hand — retry this request exactly once.
+                return _get(path, params, _refreshed=True)
             if e.code in (401, 403):
-                raise AuthError(f"HTTP {e.code} — token expired or not permitted")
+                raise AuthError(f"HTTP {e.code} — token expired/invalid and "
+                                f"refresh unavailable")
             if e.code == 429 or e.code >= 500:
                 last_exc = e
                 time.sleep((2 ** attempt) + 0.1 * attempt)
@@ -208,12 +294,13 @@ if __name__ == "__main__":
         report = collect()
         _print_human(report)
     except AuthError as e:
-        # Strategy B: fail this source loudly & gracefully, don't take down the app.
+        # Strategy A: auto-refresh already attempted inside _get and failed.
+        # Fail just this source gracefully — don't take down the whole dashboard.
         report = {
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "server": "skipjack",
-            "error": f"ARCH token needs rotation: {e}. Regenerate on the ARCH "
-                     f"portal User Profile page and update TOKEN in .env.",
+            "error": f"ARCH auth failed ({e}). Automatic token refresh did not "
+                     f"succeed — verify CF_USERNAME/CF_PASSWORD in .env.",
         }
         print(f"[skipjack] AUTH FAILURE: {report['error']}", file=sys.stderr)
     except Exception as e:
