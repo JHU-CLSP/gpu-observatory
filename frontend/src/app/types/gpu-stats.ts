@@ -1,5 +1,44 @@
 // Type definitions for GPU statistics
 
+export interface SkipjackPartition {
+  partition: string;
+  total: number;
+  used: number;
+  idle: number;
+  down: number;
+  allow_accounts: string | null;
+  deny_accounts: string | null;
+  allow_qos: string | null;
+  deny_qos: string | null;
+}
+
+export interface SkipjackAccountUsage {
+  account: string;
+  gpus: Record<string, number>;
+  total: number;
+  queue: number;
+}
+
+export interface SkipjackStats {
+  timestamp: string;
+  server: "skipjack";
+  partitions: SkipjackPartition[];
+  partition_totals: {
+    total: number;
+    used: number;
+    idle: number;
+    down: number;
+  };
+  dkhasha1_users: DSAIUserGPUs[];
+  dkhasha1_totals: {
+    by_partition: Record<string, number>;
+    total: number;
+  };
+  pending_jobs: PendingJob[];
+  dkhasha1_pending: PendingSummary;
+  cluster_account_usage: SkipjackAccountUsage[];
+}
+
 export interface DSAIPartition {
   partition: string;
   total: number;
@@ -231,6 +270,9 @@ export interface DevDanielkStats {
 
 export interface HistoricalDataPoint {
   timestamp: string;
+  skipjack_team_usage: number;
+  skipjack_total_usage: number;
+  skipjack_pending_gpus: number;
   dsai_team_usage: number;
   dsai_total_usage: number;
   dsai_pending_gpus: number;

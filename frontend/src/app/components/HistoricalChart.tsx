@@ -14,6 +14,7 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     return (
       <div className="space-y-6">
         {[
+          { title: "Skipjack Cluster", color: "text-indigo-600" },
           { title: "DSAI Cluster (Shared)", color: "text-purple-600" },
           { title: "DSAI Cluster (Condo · H200)", color: "text-teal-600" },
           { title: "Rockfish Cluster", color: "text-blue-600" },
@@ -49,6 +50,12 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     });
   };
 
+  const skipjackData = data.map((point) => ({
+    time: formatTime(point.timestamp),
+    "Team Usage": point.skipjack_team_usage,
+    "Pending": point.skipjack_pending_gpus,
+  }));
+
   const dsaiData = data.map((point) => ({
     time: formatTime(point.timestamp),
     "Team Usage": point.dsai_team_usage,
@@ -82,6 +89,55 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
 
   return (
     <div className="space-y-6">
+      {/* Skipjack Chart */}
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <CardTitle>Skipjack Cluster - GPU Usage Over Time</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={skipjackData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 12 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                label={{ value: "GPU Count", angle: -90, position: "insideLeft" }}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  border: "1px solid #ccc",
+                  borderRadius: "8px"
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="Team Usage"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Pending"
+                stroke="#a5b4fc"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
       {/* DSAI Shared Chart */}
       <Card className="w-full">
         <CardHeader>

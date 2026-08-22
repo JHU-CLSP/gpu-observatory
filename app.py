@@ -28,6 +28,7 @@ CACHE_TTL_SECONDS = 30 * 60  # 30 minutes
 HISTORY_MAX_POINTS = 500    # ~10 days at 30-min intervals
 
 SCRIPTS: dict[str, Path] = {
+    "skipjack": Path(__file__).parent / "danielgpus_skipjack.py",
     "dsai": Path(__file__).parent / "danielgpus_dsai.py",
     "rockfish": Path(__file__).parent / "danielgpus_rockfish.py",
     "ia1": Path(__file__).parent / "danielgpus_ia1.py",
@@ -50,18 +51,22 @@ _history: deque[dict] = deque(maxlen=HISTORY_MAX_POINTS)
 def _snapshot_to_history_point() -> dict | None:
     """Build a HistoricalDataPoint from the current cache. Returns None if any
     server is missing or errored."""
+    skipjack = _cache.get("skipjack", {}).get("data", {})
     dsai = _cache.get("dsai", {}).get("data", {})
     rockfish = _cache.get("rockfish", {}).get("data", {})
     ia1 = _cache.get("ia1", {}).get("data", {})
     devdanielk = _cache.get("devdanielk", {}).get("data", {})
 
-    if not dsai or not rockfish or not ia1 or not devdanielk:
+    if not skipjack or not dsai or not rockfish or not ia1 or not devdanielk:
         return None
-    if dsai.get("error") or rockfish.get("error") or ia1.get("error") or devdanielk.get("error"):
+    if skipjack.get("error") or dsai.get("error") or rockfish.get("error") or ia1.get("error") or devdanielk.get("error"):
         return None
 
     return {
         "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "skipjack_team_usage": skipjack.get("dkhasha1_totals", {}).get("total", 0),
+        "skipjack_total_usage": skipjack.get("partition_totals", {}).get("used", 0),
+        "skipjack_pending_gpus": skipjack.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
         "dsai_team_usage": dsai.get("dkhasha1_totals", {}).get("total", 0),
         "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0),
         "dsai_pending_gpus": dsai.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
@@ -178,12 +183,18 @@ async def _get_cached_or_fetch(server: str) -> dict:
 @app.get("/stats")
 async def get_all_stats():
     results = await asyncio.gather(
+        _get_cached_or_fetch("skipjack"),
         _get_cached_or_fetch("dsai"),
         _get_cached_or_fetch("rockfish"),
         _get_cached_or_fetch("ia1"),
         _get_cached_or_fetch("devdanielk"),
     )
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
+    return {"skipjack": results[0], "dsai": results[1], "rockfish": results[2], "ia1": results[3], "devdanielk": results[4]}
+
+
+@app.get("/stats/skipjack")
+async def get_skipjack_stats():
+    return await _get_cached_or_fetch("skipjack")
 
 
 @app.get("/stats/dsai")
@@ -209,6 +220,7 @@ async def get_devdanielk_stats():
 @app.post("/stats/refresh")
 async def refresh_all():
     results = await asyncio.gather(
+        _fetch_server("skipjack"),
         _fetch_server("dsai"),
         _fetch_server("rockfish"),
         _fetch_server("ia1"),
@@ -217,7 +229,7 @@ async def refresh_all():
     point = _snapshot_to_history_point()
     if point:
         _history.append(point)
-    return {"dsai": results[0], "rockfish": results[1], "ia1": results[2], "devdanielk": results[3]}
+    return {"skipjack": results[0], "dsai": results[1], "rockfish": results[2], "ia1": results[3], "devdanielk": results[4]}
 
 
 @app.post("/stats/{server}/refresh")
