@@ -4,13 +4,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Server, Users, AlertCircle, Clock } from "lucide-react";
 import { Progress } from "./ui/progress";
-import { PendingReason } from "./PendingReason";
+import { PendingReason, PendingReasonLegend } from "./PendingReason";
 
 const TOP_USERS_SHOWN = 3;
 
 interface SkipjackServerCardProps {
   stats: SkipjackStats | null;
   error?: string | null;
+}
+
+function formatQueuedAgo(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const submitted = new Date(iso);
+  if (Number.isNaN(submitted.getTime())) return null;
+  const minutes = Math.max(0, Math.round((Date.now() - submitted.getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  if (hours < 24) return remMinutes > 0 ? `${hours}h ${remMinutes}m ago` : `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours > 0 ? `${days}d ${remHours}h ago` : `${days}d ago`;
 }
 
 const TEAM_COLOR = "#3b82f6"; // blue-500
@@ -65,6 +80,9 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
     cur.gpus += job.gpus_requested;
     pendingByUser.set(job.user, cur);
   }
+  const partitionAcl = Object.fromEntries(
+    stats.partitions.map((p) => [p.partition, { allow_accounts: p.allow_accounts, deny_accounts: p.deny_accounts }])
+  );
   const runningByUser = new Map(stats.dkhasha1_users.map((u) => [u.user, u]));
   const allMemberNames = new Set([...runningByUser.keys(), ...pendingByUser.keys()]);
   const teamMembers = Array.from(allMemberNames)
@@ -293,21 +311,38 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                 {stats.dkhasha1_pending.job_count} jobs · {stats.dkhasha1_pending.total_gpus_requested} GPUs
               </Badge>
             </h4>
+            <PendingReasonLegend />
             <div className="space-y-1">
-              {stats.pending_jobs.map((job) => (
-                <div
-                  key={job.jobid}
-                  className="text-xs bg-purple-50 dark:bg-purple-950/40 p-2 rounded flex items-center justify-between"
-                >
-                  <span className="font-mono">{job.user}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">
-                      {job.gpu_type ? `${job.gpus_requested}× ${job.gpu_type}` : `${job.gpus_requested} GPUs`}
-                    </span>
-                    {job.reason && <PendingReason reason={job.reason} />}
+              {stats.pending_jobs.map((job) => {
+                const queuedAgo = formatQueuedAgo(job.queued_at);
+                return (
+                  <div
+                    key={job.jobid}
+                    className="text-xs bg-purple-50 dark:bg-purple-950/40 p-2 rounded flex items-center justify-between"
+                  >
+                    <span className="font-mono">{job.user}</span>
+                    <div className="flex items-center gap-2">
+                      {queuedAgo && (
+                        <span
+                          className="text-muted-foreground shrink-0"
+                          title={job.queued_at ? `Queued since ${new Date(job.queued_at).toLocaleString()}` : undefined}
+                        >
+                          queued {queuedAgo}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground">
+                        {job.gpu_type ? `${job.gpus_requested}× ${job.gpu_type}` : `${job.gpus_requested} GPUs`}
+                      </span>
+                      {job.reason && (
+                        <PendingReason
+                          reason={job.reason}
+                          accessContext={{ account: "dkhasha1", partitions: job.partition, partitionAcl }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -17,7 +17,7 @@ export function DevDanielkServerCard({ stats, error }: DevDanielkServerCardProps
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Server className="h-5 w-5" />
-              <CardTitle>devdanielk (RTX 6000) Node</CardTitle>
+              <CardTitle>RTX Blackwell 6000 (devdanielk) Node</CardTitle>
             </div>
             <Badge variant="default">Unscheduled</Badge>
           </div>
@@ -43,7 +43,7 @@ export function DevDanielkServerCard({ stats, error }: DevDanielkServerCardProps
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Server className="h-5 w-5" />
-            <CardTitle>devdanielk Node</CardTitle>
+            <CardTitle>RTX Blackwell 6000 (devdanielk) Node</CardTitle>
           </div>
           <Badge variant="default">Unscheduled · 8× RTX PRO 6000</Badge>
         </div>

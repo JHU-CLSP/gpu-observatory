@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { LineChart, Line, ReferenceLine, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { HistoricalDataPoint } from "../types/gpu-stats";
 import { TrendingUp } from "lucide-react";
 
@@ -15,11 +15,9 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
       <div className="space-y-6">
         {[
           { title: "Skipjack Cluster", color: "text-indigo-600" },
-          { title: "DSAI Cluster (Shared)", color: "text-purple-600" },
-          { title: "DSAI Cluster (Condo · H200)", color: "text-teal-600" },
           { title: "Rockfish Cluster", color: "text-blue-600" },
           { title: "IA1 Node", color: "text-green-600" },
-          { title: "RTX Node", color: "text-orange-600" },
+          { title: "RTX Blackwell 6000 (devdanielk) Node", color: "text-orange-600" },
         ].map(({ title, color }) => (
           <Card key={title} className="w-full">
             <CardHeader>
@@ -54,18 +52,6 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     time: formatTime(point.timestamp),
     "Team Usage": point.skipjack_team_usage,
     "Pending": point.skipjack_pending_gpus,
-  }));
-
-  const dsaiData = data.map((point) => ({
-    time: formatTime(point.timestamp),
-    "Team Usage": point.dsai_team_usage,
-    "Pending": point.dsai_pending_gpus,
-  }));
-
-  const h200Data = data.map((point) => ({
-    time: formatTime(point.timestamp),
-    "Team Usage": point.dsai_h200_team_usage,
-    "Cluster Total": point.dsai_h200_total_usage,
   }));
 
   const rockfishData = data.map((point) => ({
@@ -129,110 +115,6 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 type="monotone"
                 dataKey="Pending"
                 stroke="#a5b4fc"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* DSAI Shared Chart */}
-      <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <CardTitle>DSAI Cluster (Shared) - GPU Usage Over Time</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={dsaiData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 12 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                label={{ value: "GPU Count", angle: -90, position: "insideLeft" }}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #ccc",
-                  borderRadius: "8px"
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="Team Usage"
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="Pending"
-                stroke="#c4b5fd"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* H200 Condo Chart */}
-      <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-teal-600" />
-            <CardTitle>DSAI Cluster (Condo · H200) - GPU Usage Over Time</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={h200Data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 12 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                label={{ value: "GPU Count", angle: -90, position: "insideLeft" }}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #ccc",
-                  borderRadius: "8px"
-                }}
-              />
-              <Legend />
-              <ReferenceLine
-                y={24}
-                stroke="#0d9488"
-                strokeDasharray="4 4"
-                label={{ value: "Team limit (24)", position: "insideTopRight", fontSize: 11, fill: "#0d9488" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Team Usage"
-                stroke="#0d9488"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="Cluster Total"
-                stroke="#99f6e4"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}

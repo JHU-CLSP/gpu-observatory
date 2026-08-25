@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 REMOTE = "skipjack"
 
@@ -224,7 +224,7 @@ print()
 
 pending_out = run([
     "squeue",
-    "-o", "%i|%u|%P|%b|%r",
+    "-o", "%i|%u|%P|%b|%r|%V",
     "--account=" + TEAM_ACCOUNT,
     "-t", "PD",
     "--noheader",
@@ -237,17 +237,28 @@ for line in pending_out.splitlines():
     parts = line.split("|")
     if len(parts) < 2:
         continue
-    jobid  = parts[0].strip()
-    user   = parts[1].strip()
-    part   = parts[2].strip().rstrip("*") if len(parts) > 2 else ""
-    gres   = parts[3].strip() if len(parts) > 3 else ""
-    reason = parts[4].strip() if len(parts) > 4 else ""
+    jobid      = parts[0].strip()
+    user       = parts[1].strip()
+    part       = parts[2].strip().rstrip("*") if len(parts) > 2 else ""
+    gres       = parts[3].strip() if len(parts) > 3 else ""
+    reason     = parts[4].strip() if len(parts) > 4 else ""
+    # %V is the submission time in the cluster's local timezone (Slurm prints
+    # "N/A" if unknown). Convert to UTC so the frontend renders it correctly
+    # regardless of the browser's timezone.
+    submit_raw = parts[5].strip() if len(parts) > 5 else ""
+    queued_at = None
+    if submit_raw and submit_raw != "N/A":
+        try:
+            local_dt = datetime.strptime(submit_raw, "%Y-%m-%dT%H:%M:%S")
+            queued_at = local_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            queued_at = None
 
     m = re.search(r"gpu:(?:([^:,\s\d][^:,\s]*):)?(\d+)", gres)
     gpu_type = m.group(1).upper() if m and m.group(1) else ""
     gpus = int(m.group(2)) if m else 0
 
-    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason})
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at})
     pending_user_gpus[user] += gpus
 
 total_pending_gpus = sum(pending_user_gpus.values())

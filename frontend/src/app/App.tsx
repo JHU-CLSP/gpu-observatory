@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { SkipjackServerCard } from "./components/SkipjackServerCard";
 import { SkipjackAccountUsageChart } from "./components/SkipjackAccountUsageChart";
-import { DSAIServerCard } from "./components/DSAIServerCard";
-import { H200ServerCard } from "./components/H200ServerCard";
-import { B200ServerCard } from "./components/B200ServerCard";
 import { RockfishServerCard } from "./components/RockfishServerCard";
 import { IA1ServerCard } from "./components/IA1ServerCard";
 import { DevDanielkServerCard } from "./components/DevDanielkServerCard";
 import { HistoricalChart } from "./components/HistoricalChart";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
-import { SkipjackStats, DSAIStats, RockfishStats, IA1Stats, DevDanielkStats, HistoricalDataPoint } from "./types/gpu-stats";
+import { SkipjackStats, RockfishStats, IA1Stats, DevDanielkStats, HistoricalDataPoint } from "./types/gpu-stats";
+import { useTheme } from "./hooks/useTheme";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 import { Button } from "./components/ui/button";
@@ -18,8 +17,8 @@ import { Badge } from "./components/ui/badge";
 
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [skipjackStats, setSkipjackStats] = useState<SkipjackStats | null>(null);
-  const [dsaiStats, setDsaiStats] = useState<DSAIStats | null>(null);
   const [rockfishStats, setRockfishStats] = useState<RockfishStats | null>(null);
   const [ia1Stats, setIa1Stats] = useState<IA1Stats | null>(null);
   const [devdanielkStats, setDevdanielkStats] = useState<DevDanielkStats | null>(null);
@@ -28,16 +27,14 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skipjackError, setSkipjackError] = useState<string | null>(null);
-  const [dsaiError, setDsaiError] = useState<string | null>(null);
   const [rockfishError, setRockfishError] = useState<string | null>(null);
   const [ia1Error, setIa1Error] = useState<string | null>(null);
   const [devdanielkError, setDevdanielkError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
-      const [skipjack, dsai, rockfish, ia1, devdanielk, history] = await Promise.all([
+      const [skipjack, rockfish, ia1, devdanielk, history] = await Promise.all([
         fetch(`${API_BASE}/stats/skipjack`).then(r => r.json()),
-        fetch(`${API_BASE}/stats/dsai`).then(r => r.json()),
         fetch(`${API_BASE}/stats/rockfish`).then(r => r.json()),
         fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
         fetch(`${API_BASE}/stats/devdanielk`).then(r => r.json()),
@@ -46,9 +43,6 @@ export default function App() {
 
       if (skipjack.error) { setSkipjackError(skipjack.error); setSkipjackStats(null); }
       else { setSkipjackStats(skipjack); setSkipjackError(null); }
-
-      if (dsai.error) { setDsaiError(dsai.error); setDsaiStats(null); }
-      else { setDsaiStats(dsai); setDsaiError(null); }
 
       if (rockfish.error) { setRockfishError(rockfish.error); setRockfishStats(null); }
       else { setRockfishStats(rockfish); setRockfishError(null); }
@@ -89,8 +83,8 @@ export default function App() {
   }, []);
 
   // Only block the full page on initial load (nothing yet) or backend unreachable
-  const nothingLoaded = !skipjackStats && !dsaiStats && !rockfishStats && !ia1Stats && !devdanielkStats
-    && !skipjackError && !dsaiError && !rockfishError && !ia1Error && !devdanielkError;
+  const nothingLoaded = !skipjackStats && !rockfishStats && !ia1Stats && !devdanielkStats
+    && !skipjackError && !rockfishError && !ia1Error && !devdanielkError;
   if (fetchError || nothingLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -139,120 +133,27 @@ export default function App() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Skipjack Cluster — shown first as the primary cluster */}
-        <div className="mb-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-              <div className="text-sm text-muted-foreground mb-2">Skipjack Team Usage</div>
-              {skipjackStats ? (
-                <>
-                  <div className="text-3xl font-bold text-indigo-600">
-                    {skipjackStats.dkhasha1_totals.total}
-                    <span className="text-lg text-muted-foreground"> GPUs</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {skipjackStats.dkhasha1_pending.total_gpus_requested > 0
-                      ? `${skipjackStats.dkhasha1_pending.total_gpus_requested} GPUs queued`
-                      : "No pending requests"}
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
-                  <AlertCircle className="h-4 w-4" /> Unavailable
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-              <div className="text-sm text-muted-foreground mb-2">Skipjack Total Usage</div>
-              {skipjackStats ? (
-                <>
-                  <div className="text-3xl font-bold text-indigo-600">
-                    {skipjackStats.partition_totals.used}
-                    <span className="text-lg text-muted-foreground"> / {skipjackStats.partition_totals.total}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {skipjackStats.partition_totals.total > 0
-                      ? `${((skipjackStats.partition_totals.used / skipjackStats.partition_totals.total) * 100).toFixed(1)}% utilized`
-                      : "No data"}
-                    {" • "}
-                    {skipjackStats.partition_totals.down} down
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
-                  <AlertCircle className="h-4 w-4" /> Unavailable
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-              <div className="text-sm text-muted-foreground mb-2">Skipjack Pending Queue</div>
-              {skipjackStats ? (
-                <>
-                  <div className="text-3xl font-bold text-indigo-600">
-                    {skipjackStats.dkhasha1_pending.job_count}
-                    <span className="text-lg text-muted-foreground"> jobs</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {skipjackStats.dkhasha1_pending.total_gpus_requested} GPUs requested
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
-                  <AlertCircle className="h-4 w-4" /> Unavailable
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <SkipjackServerCard stats={skipjackStats} error={skipjackError} />
-            </div>
-            <Card className="w-full">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <BarChart2 className="h-5 w-5 text-indigo-600" />
-                  <CardTitle>GPU Usage by Account</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {skipjackStats && skipjackStats.cluster_account_usage.length > 0 ? (
-                  <SkipjackAccountUsageChart data={skipjackStats.cluster_account_usage} />
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    {skipjackStats ? "No account usage data." : "Data unavailable."}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {/* Summary Stats — active GPU counts, shown first for a quick overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-            <div className="text-sm text-muted-foreground mb-2">DSAI Team Usage</div>
-            {dsaiStats ? (
+            <div className="text-sm text-muted-foreground mb-2">Skipjack Team Usage</div>
+            {skipjackStats ? (
               <>
-                <div className="text-3xl font-bold text-purple-600">
-                  {dsaiStats.dkhasha1_totals.total}
-                  <span className="text-lg text-muted-foreground"> / 32</span>
+                <div className="text-3xl font-bold text-indigo-600">
+                  {skipjackStats.dkhasha1_totals.total}
+                  <span className="text-lg text-muted-foreground"> GPUs</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {((dsaiStats.dkhasha1_totals.total / 32) * 100).toFixed(1)}% of allocation
-                  {dsaiStats.idle_allocated_gpus?.length > 0 && (
-                    <Badge variant="outline" className="ml-2 text-amber-600 border-amber-600">
-                      {dsaiStats.idle_allocated_gpus.length} idle allocated
-                    </Badge>
-                  )}
+                  {skipjackStats.dkhasha1_pending.total_gpus_requested > 0
+                    ? `${skipjackStats.dkhasha1_pending.total_gpus_requested} GPUs queued`
+                    : "No pending requests"}
                 </div>
               </>
             ) : (
@@ -263,15 +164,15 @@ export default function App() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-            <div className="text-sm text-muted-foreground mb-2">H200 Condo Usage</div>
-            {dsaiStats ? (
+            <div className="text-sm text-muted-foreground mb-2">Skipjack Pending Queue</div>
+            {skipjackStats ? (
               <>
-                <div className="text-3xl font-bold text-teal-600">
-                  {dsaiStats.h200?.team_gpus_used ?? 0}
-                  <span className="text-lg text-muted-foreground"> / {dsaiStats.h200?.team_limit ?? 24}</span>
+                <div className="text-3xl font-bold text-indigo-600">
+                  {skipjackStats.dkhasha1_pending.job_count}
+                  <span className="text-lg text-muted-foreground"> jobs</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {(((dsaiStats.h200?.team_gpus_used ?? 0) / (dsaiStats.h200?.team_limit ?? 24)) * 100).toFixed(1)}% of condo allocation
+                  {skipjackStats.dkhasha1_pending.total_gpus_requested} GPUs requested
                 </div>
               </>
             ) : (
@@ -306,7 +207,7 @@ export default function App() {
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
-            <div className="text-sm text-muted-foreground mb-2">devdanielk Active GPUs</div>
+            <div className="text-sm text-muted-foreground mb-2">RTX Blackwell 6000 (devdanielk) Active GPUs</div>
             {devdanielkStats ? (
               <>
                 <div className="text-3xl font-bold text-orange-600">
@@ -349,18 +250,39 @@ export default function App() {
           </div>
         </div>
 
-        {/* Historical Chart */}
+        {/* Historical Chart — usage over time, shown near the top for a quick trend overview */}
         <div className="mb-8">
           <HistoricalChart data={historicalData} />
         </div>
 
+        {/* Skipjack Cluster — the primary cluster */}
+        <div className="mb-8 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <SkipjackServerCard stats={skipjackStats} error={skipjackError} />
+            </div>
+            <Card className="w-full">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BarChart2 className="h-5 w-5 text-indigo-600" />
+                  <CardTitle>GPU Usage by Account</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {skipjackStats && skipjackStats.cluster_account_usage.length > 0 ? (
+                  <SkipjackAccountUsageChart data={skipjackStats.cluster_account_usage} />
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    {skipjackStats ? "No account usage data." : "Data unavailable."}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Server Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="md:col-span-2">
-            <DSAIServerCard stats={dsaiStats} error={dsaiError} />
-          </div>
-          <H200ServerCard stats={dsaiStats} error={dsaiError} />
-          <B200ServerCard stats={dsaiStats} error={dsaiError} />
           <IA1ServerCard stats={ia1Stats} error={ia1Error} />
           <DevDanielkServerCard stats={devdanielkStats} error={devdanielkError} />
           <RockfishServerCard stats={rockfishStats} error={rockfishError} />

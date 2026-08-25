@@ -68,6 +68,8 @@ export interface PendingJob {
   gpus_requested: number;
   gpu_type?: string;
   reason?: string;
+  /** UTC ISO-8601 timestamp of when the job was submitted, if known. */
+  queued_at?: string | null;
 }
 
 export interface PendingSummary {
