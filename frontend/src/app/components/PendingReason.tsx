@@ -65,19 +65,34 @@ function buildAccessDetail(ctx: AccountAccessContext): string {
   return `Account '${ctx.account}' isn't permitted on the requested partition${requested.length > 1 ? "s" : ""}: ${described.join(", ")}. An admin needs to add this account's association, or the job should target a partition that already allows it.`;
 }
 
-export function PendingReason({ reason, accessContext }: { reason: string; accessContext?: AccountAccessContext }) {
+export function PendingReason({
+  reason,
+  accessContext,
+  scheduledStart,
+}: {
+  reason: string;
+  accessContext?: AccountAccessContext;
+  /** UTC ISO-8601 timestamp of Slurm's scheduled/estimated start time, if known. */
+  scheduledStart?: string | null;
+}) {
   if (!reason) return null;
   const known = SLURM_REASON[reason];
   const label = known ? known.label : reason;
   const isAccessIssue = known?.category === "access" || reason === "InvalidAccount" || reason === "InvalidQOS";
   const specific = isAccessIssue && accessContext ? buildAccessDetail(accessContext) : null;
-  const detail = specific ?? (known ? `${reason}: ${known.detail}` : reason);
+  let detail = specific ?? (known ? `${reason}: ${known.detail}` : reason);
+  const startDate = scheduledStart ? new Date(scheduledStart) : null;
+  const startLabel = startDate && !Number.isNaN(startDate.getTime()) ? startDate.toLocaleString() : null;
+  if (startLabel) {
+    detail = `${detail} Scheduled to start ~${startLabel}.`;
+  }
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="cursor-help underline decoration-dotted text-muted-foreground">
             {label}
+            {startLabel ? ` (~${startLabel})` : ""}
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs text-xs">

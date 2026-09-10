@@ -29,6 +29,7 @@ export interface SkipjackStats {
     idle: number;
     down: number;
   };
+  dkhasha1_accounts: string[];
   dkhasha1_users: DSAIUserGPUs[];
   dkhasha1_totals: {
     by_partition: Record<string, number>;
@@ -51,6 +52,8 @@ export interface DSAIUserGPUs {
   user: string;
   gpus: Record<string, number>;
   total: number;
+  /** GPU count by SLURM account (e.g. sub-accounts like "dkhasha1_main_a"). */
+  by_account?: Record<string, number>;
 }
 
 export interface DSAIInteractiveJob {
@@ -70,6 +73,10 @@ export interface PendingJob {
   reason?: string;
   /** UTC ISO-8601 timestamp of when the job was submitted, if known. */
   queued_at?: string | null;
+  /** UTC ISO-8601 timestamp of Slurm's scheduled/estimated start time, if known. */
+  scheduled_start?: string | null;
+  /** SLURM account the job was submitted under (e.g. "dkhasha1_main_a"). */
+  account?: string;
 }
 
 export interface PendingSummary {

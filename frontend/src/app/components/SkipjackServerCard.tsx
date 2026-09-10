@@ -114,7 +114,7 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Team Usage (dkhasha1)
+              Team Usage ({(stats.dkhasha1_accounts?.length ? stats.dkhasha1_accounts : ["dkhasha1"]).join(", ")})
             </span>
             <span className="font-bold">{stats.dkhasha1_totals.total} GPUs running</span>
           </div>
@@ -284,6 +284,16 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                             {partition}: {count}
                           </Badge>
                         ))}
+                        {running.by_account &&
+                          Object.entries(running.by_account).map(([account, count]) => (
+                            <Badge
+                              key={account}
+                              variant="outline"
+                              className="text-[10px] px-1 py-0 text-blue-600 border-blue-600"
+                            >
+                              {account}: {count}
+                            </Badge>
+                          ))}
                         <span className="font-bold text-xs">{running.total} running</span>
                       </>
                     ) : (
@@ -336,7 +346,8 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                       {job.reason && (
                         <PendingReason
                           reason={job.reason}
-                          accessContext={{ account: "dkhasha1", partitions: job.partition, partitionAcl }}
+                          accessContext={{ account: job.account ?? "dkhasha1", partitions: job.partition, partitionAcl }}
+                          scheduledStart={job.scheduled_start}
                         />
                       )}
                     </div>

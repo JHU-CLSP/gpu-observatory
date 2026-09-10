@@ -42,6 +42,20 @@ def run(cmd):
     return result.stdout
 
 
+# Our team owns sub-accounts under dkhasha1 too (e.g. "dkhasha1_main_a" for a
+# specific allocation/QOS), which sacctmgr treats as distinct SLURM accounts.
+# Usage under any of them is still "our" usage, so discover them dynamically
+# rather than hardcoding — new sub-accounts show up automatically.
+def get_team_accounts():
+    out = run(["sacctmgr", "show", "account", "format=Account%40", "-n", "-P"])
+    accounts = {line.strip() for line in out.splitlines() if line.strip()}
+    matches = sorted(a for a in accounts if a == TEAM_ACCOUNT or a.startswith(TEAM_ACCOUNT + "_"))
+    return matches or [TEAM_ACCOUNT]
+
+
+TEAM_ACCOUNTS = get_team_accounts()
+
+
 # ============================================================
 # Section 1: Total / used / idle / down GPUs per type
 # ============================================================
@@ -158,12 +172,13 @@ for p in PARTITIONS:
 # ============================================================
 
 user_gpus = {part: defaultdict(int) for part in PARTITIONS}
+user_account_gpus = defaultdict(lambda: defaultdict(int))
 users_seen = []
 
 squeue_out = run([
     "squeue",
     "-O", "JobID:12,UserName:20,Partition:10,tres-alloc:100,Account:20",
-    "--account=" + TEAM_ACCOUNT,
+    "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "R",
     "--noheader",
 ])
@@ -175,6 +190,7 @@ for line in squeue_out.splitlines():
     user = fields[1].strip()
     part = fields[2].strip().rstrip("*")
     tres = fields[3].strip() if len(fields) > 3 else ""
+    account = fields[4].strip() if len(fields) > 4 else TEAM_ACCOUNT
 
     if part not in PARTITIONS:
         continue
@@ -186,6 +202,7 @@ for line in squeue_out.splitlines():
         users_seen.append(user)
 
     user_gpus[part][user] += gpus
+    user_account_gpus[user][account] += gpus
 
 
 def user_total(u):
@@ -224,8 +241,8 @@ print()
 
 pending_out = run([
     "squeue",
-    "-o", "%i|%u|%P|%b|%r|%V",
-    "--account=" + TEAM_ACCOUNT,
+    "-o", "%i|%u|%P|%b|%r|%V|%a|%S",
+    "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "PD",
     "--noheader",
 ])
@@ -246,6 +263,11 @@ for line in pending_out.splitlines():
     # "N/A" if unknown). Convert to UTC so the frontend renders it correctly
     # regardless of the browser's timezone.
     submit_raw = parts[5].strip() if len(parts) > 5 else ""
+    account    = parts[6].strip() if len(parts) > 6 else TEAM_ACCOUNT
+    # %S is Slurm's scheduled/estimated start time - populated once the
+    # scheduler has computed one (e.g. a BeginTime job, or a backfill
+    # estimate); "N/A" means no estimate is available yet.
+    start_raw  = parts[7].strip() if len(parts) > 7 else ""
     queued_at = None
     if submit_raw and submit_raw != "N/A":
         try:
@@ -253,12 +275,25 @@ for line in pending_out.splitlines():
             queued_at = local_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             queued_at = None
+    scheduled_start = None
+    if start_raw and start_raw != "N/A":
+        try:
+            local_dt = datetime.strptime(start_raw, "%Y-%m-%dT%H:%M:%S")
+            scheduled_start = local_dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            scheduled_start = None
 
     m = re.search(r"gpu:(?:([^:,\s\d][^:,\s]*):)?(\d+)", gres)
     gpu_type = m.group(1).upper() if m and m.group(1) else ""
     gpus = int(m.group(2)) if m else 0
+    # Users often submit with a bare "--gres=gpu:N" (no type) but still pick a
+    # partition. Each partition here maps 1:1 to a single GPU type, so that
+    # still tells us the type unambiguously - fall back to it instead of
+    # leaving gpu_type blank.
+    if not gpu_type and part in PARTITIONS:
+        gpu_type = part.upper()
 
-    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at})
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at, "scheduled_start": scheduled_start, "account": account})
     pending_user_gpus[user] += gpus
 
 total_pending_gpus = sum(pending_user_gpus.values())
@@ -310,6 +345,18 @@ for line in all_queue_out.splitlines():
     if account:
         cluster_account_queue[account] += 1
 
+# Fold every team sub-account into the canonical "dkhasha1" row so the
+# cluster-wide ranking (and the frontend's "which bar is us" logic) treats
+# them as one team rather than several small, easy-to-miss accounts.
+for acct in TEAM_ACCOUNTS:
+    if acct == TEAM_ACCOUNT:
+        continue
+    if acct in cluster_account_gpus:
+        for part, gpus in cluster_account_gpus.pop(acct).items():
+            cluster_account_gpus[TEAM_ACCOUNT][part] += gpus
+    if acct in cluster_account_queue:
+        cluster_account_queue[TEAM_ACCOUNT] += cluster_account_queue.pop(acct)
+
 all_accounts_set = set(cluster_account_gpus.keys()) | set(cluster_account_queue.keys())
 sorted_accounts = sorted(
     all_accounts_set,
@@ -343,11 +390,13 @@ report = {
         "idle":  grand_idle,
         "down":  grand_down,
     },
+    "dkhasha1_accounts": TEAM_ACCOUNTS,
     "dkhasha1_users": [
         {
             "user":  u,
             "gpus":  {p: user_gpus[p][u] for p in PARTITIONS if user_gpus[p][u] > 0},
             "total": user_total(u),
+            "by_account": {a: g for a, g in user_account_gpus[u].items() if g > 0},
         }
         for u in sorted_users if user_total(u) > 0
     ],
