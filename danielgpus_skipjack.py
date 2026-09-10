@@ -38,11 +38,6 @@ TEAM_ACCOUNT = "dkhasha1"
 # capacity bucket (which would double-count the nodes).
 PARTITION_ALIASES = {"rtx6000_condo": "rtx6000"}
 
-# As of 2026-09, gr101-103 are visible to `sinfo` but not yet registered with
-# `scontrol`/slurmctld (nodes/partition still being provisioned) - so the
-# rtx6000 row's total/used/idle/down will read 0 until that's fixed upstream.
-# Team job accounting (squeue-based, below) is unaffected.
-
 # Skipjack's node states include "drng" (draining) in addition to the
 # down|drain|not_resp|maint states seen on dsai/rockfish.
 DOWN_STATE_RE = r"down|drain|drng|not_resp|maint|fail"
@@ -188,7 +183,12 @@ users_seen = []
 
 squeue_out = run([
     "squeue",
-    "-O", "JobID:12,UserName:20,Partition:10,tres-alloc:100,Account:20",
+    # Partition width must exceed the longest partition name (e.g.
+    # "rtx6000_condo", 13 chars) - squeue's fixed-width -O output runs a
+    # column that overflows its declared width straight into the next
+    # column with no separating space, which silently corrupts the
+    # whitespace-based split() below for any job in that partition.
+    "-O", "JobID:12,UserName:20,Partition:20,tres-alloc:100,Account:20",
     "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "R",
     "--noheader",
