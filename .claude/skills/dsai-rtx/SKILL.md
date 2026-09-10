@@ -40,16 +40,6 @@ nvidia-smi                          # per-GPU util, memory, power
 CUDA_VISIBLE_DEVICES=0,1 python train.py   # pin to specific GPUs
 ```
 
-## Getting stats without logging in
-
-```bash
-python3 danielgpus_devdanielk.py
-```
-
-Auto-SSHes (through the `dsai` proxy jump) and reports per-GPU util/memory/power,
-per-user GPU-memory usage, and idle-but-allocated GPUs, as a table + JSON. There
-is no pending-jobs section — there's no scheduler.
-
 ## Related
 
 - [[dsai-general]] — the SLURM partitions on DSAI (needed as the proxy jump).
