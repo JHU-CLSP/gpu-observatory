@@ -7,6 +7,7 @@ import { Progress } from "./ui/progress";
 import { PendingReason, PendingReasonLegend } from "./PendingReason";
 
 const TOP_USERS_SHOWN = 3;
+const USER_BREAKDOWN_CAP = 10;
 
 interface SkipjackServerCardProps {
   stats: SkipjackStats | null;
@@ -35,6 +36,7 @@ const DOWN_COLOR = "#f87171"; // red-400
 
 export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
+  const [showIndividualUsers, setShowIndividualUsers] = useState(false);
   const toggleExpanded = (partition: string) => {
     setExpandedTypes((prev) => {
       const next = new Set(prev);
@@ -143,7 +145,7 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
 
         {/* GPU Type Breakdown */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h4 className="text-sm font-semibold">GPU Types</h4>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -162,6 +164,15 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                 <span className="h-2 w-2 rounded-sm inline-block" style={{ backgroundColor: DOWN_COLOR }} />
                 down
               </span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showIndividualUsers}
+                  onChange={(e) => setShowIndividualUsers(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                Show individual users
+              </label>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -170,14 +181,29 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
               const otherUsed = Math.max(partition.used - teamUsed, 0);
               // "Other accounts" = every non-dkhasha1 SLURM account with a running
               // job on this GPU type — i.e. other labs/PIs, not necessarily "teams".
+              // Individual users within an account, filtered to this partition
+              // and ranked, for the "Show individual users" nested breakdown.
+              const usersForPartition = (a: (typeof stats.cluster_account_usage)[number] | undefined) =>
+                (a?.users ?? [])
+                  .map((u) => ({ user: u.user, count: u.gpus[partition.partition] ?? 0 }))
+                  .filter((u) => u.count > 0)
+                  .sort((a, b) => b.count - a.count);
+              const dkhasha1Entry = stats.cluster_account_usage.find((a) => a.account === "dkhasha1");
               const otherAccounts = stats.cluster_account_usage
                 .filter((a) => a.account !== "dkhasha1" && (a.gpus[partition.partition] ?? 0) > 0)
-                .map((a) => ({ account: a.account, count: a.gpus[partition.partition], isTeam: false }))
+                .map((a) => ({
+                  account: a.account,
+                  count: a.gpus[partition.partition],
+                  isTeam: false,
+                  userBreakdown: usersForPartition(a),
+                }))
                 .sort((a, b) => b.count - a.count);
               // Ranked list of every account (including your own team) using this
               // GPU type, for the "who's the main user" popover.
               const mainUsers = [
-                ...(teamUsed > 0 ? [{ account: "dkhasha1", count: teamUsed, isTeam: true }] : []),
+                ...(teamUsed > 0
+                  ? [{ account: "dkhasha1", count: teamUsed, isTeam: true, userBreakdown: usersForPartition(dkhasha1Entry) }]
+                  : []),
                 ...otherAccounts,
               ].sort((a, b) => b.count - a.count);
               const segments = [
@@ -230,17 +256,37 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                       <div className="space-y-0.5 pt-1 border-t">
                         <p className="text-xs font-medium text-foreground">Top users</p>
                         {shown.map((u, i) => (
-                          <div key={u.account} className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1 min-w-0">
-                              <span className="text-muted-foreground shrink-0">{i + 1}.</span>
-                              <span className={`truncate ${u.isTeam ? "font-semibold" : ""}`}>{u.account}</span>
-                              {u.isTeam && (
-                                <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
-                                  you
-                                </Badge>
-                              )}
-                            </span>
-                            <span className="font-mono shrink-0 ml-1">{u.count}</span>
+                          <div key={u.account}>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1 min-w-0">
+                                <span className="text-muted-foreground shrink-0">{i + 1}.</span>
+                                <span className={`truncate ${u.isTeam ? "font-semibold" : ""}`}>{u.account}</span>
+                                {u.isTeam && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
+                                    you
+                                  </Badge>
+                                )}
+                              </span>
+                              <span className="font-mono shrink-0 ml-1">{u.count}</span>
+                            </div>
+                            {showIndividualUsers && u.userBreakdown.length > 0 && (
+                              <div className="pl-4 space-y-0.5">
+                                {u.userBreakdown.slice(0, USER_BREAKDOWN_CAP).map((ub) => (
+                                  <div
+                                    key={ub.user}
+                                    className="flex items-center justify-between text-[11px] text-muted-foreground"
+                                  >
+                                    <span className="font-mono truncate">{ub.user}</span>
+                                    <span className="font-mono shrink-0 ml-1">{ub.count}</span>
+                                  </div>
+                                ))}
+                                {u.userBreakdown.length > USER_BREAKDOWN_CAP && (
+                                  <p className="text-[11px] text-muted-foreground">
+                                    +{u.userBreakdown.length - USER_BREAKDOWN_CAP} more
+                                  </p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {(hiddenCount > 0 || isExpanded) && mainUsers.length > TOP_USERS_SHOWN && (

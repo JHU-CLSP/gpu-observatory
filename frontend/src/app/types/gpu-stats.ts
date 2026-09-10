@@ -17,6 +17,8 @@ export interface SkipjackAccountUsage {
   gpus: Record<string, number>;
   total: number;
   queue: number;
+  /** Individual users within this account, with their per-partition GPU counts. */
+  users?: { user: string; gpus: Record<string, number>; total: number }[];
 }
 
 export interface SkipjackStats {

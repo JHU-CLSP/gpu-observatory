@@ -326,21 +326,31 @@ print()
 
 all_accounts_out = run([
     "squeue", "-t", "R",
-    "-O", "Account:40,Partition:15,tres-alloc:100",
+    # Partition width must exceed the longest partition name (e.g.
+    # "rtx6000_condo", 13 chars) - squeue's fixed-width -O output runs a
+    # column that overflows its declared width straight into the next
+    # column with no separating space, corrupting the whitespace-split
+    # parse below for any job in that partition.
+    "-O", "UserName:20,Account:40,Partition:20,tres-alloc:100",
     "--noheader",
 ])
 
 cluster_account_gpus = defaultdict(lambda: defaultdict(int))
+cluster_account_user_gpus = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
 for line in all_accounts_out.splitlines():
     fields = line.split()
-    if len(fields) < 3:
+    if len(fields) < 4:
         continue
-    account = fields[0].strip()
-    part    = fields[1].strip().rstrip("*")
-    tres    = fields[2].strip()
+    user    = fields[0].strip()
+    account = fields[1].strip()
+    part    = fields[2].strip().rstrip("*")
+    part    = PARTITION_ALIASES.get(part, part)
+    tres    = fields[3].strip()
     m = re.search(r"gres/gpu[^=,\s]*=(\d+)", tres)
     if m:
-        cluster_account_gpus[account][part] += int(m.group(1))
+        gpus = int(m.group(1))
+        cluster_account_gpus[account][part] += gpus
+        cluster_account_user_gpus[account][user][part] += gpus
 
 
 def acct_total(a):
@@ -369,6 +379,10 @@ for acct in TEAM_ACCOUNTS:
             cluster_account_gpus[TEAM_ACCOUNT][part] += gpus
     if acct in cluster_account_queue:
         cluster_account_queue[TEAM_ACCOUNT] += cluster_account_queue.pop(acct)
+    if acct in cluster_account_user_gpus:
+        for user, part_gpus in cluster_account_user_gpus.pop(acct).items():
+            for part, gpus in part_gpus.items():
+                cluster_account_user_gpus[TEAM_ACCOUNT][user][part] += gpus
 
 all_accounts_set = set(cluster_account_gpus.keys()) | set(cluster_account_queue.keys())
 sorted_accounts = sorted(
@@ -432,6 +446,17 @@ report = {
             "gpus": dict(cluster_account_gpus[a]),
             "total": acct_total(a),
             "queue": cluster_account_queue[a],
+            "users": sorted(
+                (
+                    {
+                        "user": u,
+                        "gpus": {p: g for p, g in part_gpus.items() if g > 0},
+                        "total": sum(part_gpus.values()),
+                    }
+                    for u, part_gpus in cluster_account_user_gpus[a].items()
+                ),
+                key=lambda x: -x["total"],
+            ),
         }
         for a in sorted_accounts if acct_total(a) > 0 or cluster_account_queue[a] > 0
     ],
