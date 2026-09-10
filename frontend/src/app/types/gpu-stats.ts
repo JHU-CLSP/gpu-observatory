@@ -21,6 +21,15 @@ export interface SkipjackAccountUsage {
   users?: { user: string; gpus: Record<string, number>; total: number }[];
 }
 
+export interface SkipjackTeamAccountUsage {
+  account: string;
+  gpus: Record<string, number>;
+  total: number;
+  pending_gpus: number;
+  /** Hard cluster-enforced cap (e.g. a condo allocation's GrpTRES), if one exists for this account. */
+  capacity: number | null;
+}
+
 export interface SkipjackStats {
   timestamp: string;
   server: "skipjack";
@@ -32,6 +41,7 @@ export interface SkipjackStats {
     down: number;
   };
   dkhasha1_accounts: string[];
+  team_account_usage: SkipjackTeamAccountUsage[];
   dkhasha1_users: DSAIUserGPUs[];
   dkhasha1_totals: {
     by_partition: Record<string, number>;

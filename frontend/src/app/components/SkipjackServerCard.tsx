@@ -128,6 +128,37 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
           )}
         </div>
 
+        {/* Team Accounts: per-sub-account breakdown, so it's clear which of our
+            own accounts (e.g. dkhasha1_rtx6000's condo allocation) is saturated
+            vs which have little/no usage. */}
+        {stats.team_account_usage?.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold">Team Accounts</h4>
+            <div className="space-y-1.5">
+              {stats.team_account_usage.map((a) => {
+                const pct = a.capacity ? Math.min(100, (a.total / a.capacity) * 100) : null;
+                return (
+                  <div key={a.account} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <span className="font-mono truncate">{a.account}</span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        {a.pending_gpus > 0 && (
+                          <span className="text-purple-600">{a.pending_gpus} queued</span>
+                        )}
+                        <span className="font-mono font-semibold">
+                          {a.total}
+                          {a.capacity != null ? ` / ${a.capacity}` : ""} GPUs
+                        </span>
+                      </span>
+                    </div>
+                    {pct != null && <Progress value={pct} className="h-1.5" />}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Total Cluster Usage */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">

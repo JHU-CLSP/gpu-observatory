@@ -62,6 +62,30 @@ def get_team_accounts():
 TEAM_ACCOUNTS = get_team_accounts()
 
 
+# Some sub-accounts carry a hard cluster-enforced cap (GrpTRES on the bare
+# account-level association, e.g. dkhasha1_rtx6000's condo allocation of 8
+# GPUs) - surface it so usage can be shown as "X / cap" where one exists.
+# Others (e.g. main/main_a/safety/safety_b) only have shared QOS limits that
+# aren't exclusive to this account, so they simply have no cap here.
+def get_team_account_caps():
+    out = run(["sacctmgr", "show", "assoc", "format=Account%40,User%20,GrpTRES%40", "-n", "-P"])
+    caps = {}
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) < 3:
+            continue
+        acct, user, grptres = parts[0].strip(), parts[1].strip(), parts[2].strip()
+        if user or not grptres:
+            continue
+        m = re.search(r"gres/gpu=(\d+)", grptres)
+        if m:
+            caps[acct] = int(m.group(1))
+    return caps
+
+
+TEAM_ACCOUNT_CAPS = get_team_account_caps()
+
+
 # ============================================================
 # Section 1: Total / used / idle / down GPUs per type
 # ============================================================
@@ -179,6 +203,10 @@ for p in PARTITIONS:
 
 user_gpus = {part: defaultdict(int) for part in PARTITIONS}
 user_account_gpus = defaultdict(lambda: defaultdict(int))
+# Per exact sub-account (unfolded - "dkhasha1_rtx6000" stays its own row here,
+# unlike Section 4's cluster-wide ranking which folds sub-accounts into one
+# "dkhasha1" bar) so we can show which of our own accounts is saturated.
+team_account_gpus = {acct: defaultdict(int) for acct in TEAM_ACCOUNTS}
 users_seen = []
 
 squeue_out = run([
@@ -215,6 +243,8 @@ for line in squeue_out.splitlines():
 
     user_gpus[part][user] += gpus
     user_account_gpus[user][account] += gpus
+    if account in team_account_gpus:
+        team_account_gpus[account][part] += gpus
 
 
 def user_total(u):
@@ -261,6 +291,7 @@ pending_out = run([
 
 pending_jobs = []
 pending_user_gpus = defaultdict(int)
+team_account_pending_gpus = {acct: 0 for acct in TEAM_ACCOUNTS}
 
 for line in pending_out.splitlines():
     parts = line.split("|")
@@ -308,6 +339,8 @@ for line in pending_out.splitlines():
 
     pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at, "scheduled_start": scheduled_start, "account": account})
     pending_user_gpus[user] += gpus
+    if account in team_account_pending_gpus:
+        team_account_pending_gpus[account] += gpus
 
 total_pending_gpus = sum(pending_user_gpus.values())
 
@@ -418,6 +451,19 @@ report = {
         "down":  grand_down,
     },
     "dkhasha1_accounts": TEAM_ACCOUNTS,
+    "team_account_usage": [
+        {
+            "account": acct,
+            "gpus": {p: g for p, g in team_account_gpus[acct].items() if g > 0},
+            "total": sum(team_account_gpus[acct].values()),
+            "pending_gpus": team_account_pending_gpus[acct],
+            "capacity": TEAM_ACCOUNT_CAPS.get(acct),
+        }
+        for acct in sorted(
+            TEAM_ACCOUNTS,
+            key=lambda a: (-sum(team_account_gpus[a].values()), -team_account_pending_gpus[a]),
+        )
+    ],
     "dkhasha1_users": [
         {
             "user":  u,
