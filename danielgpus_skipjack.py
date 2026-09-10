@@ -29,8 +29,19 @@ os.environ["PATH"] = "/opt/mprov/cloack/slurm/current/bin:" + os.environ.get("PA
 
 # Each partition here is a single GPU type (partition name == GPU type).
 # The "med" partition (CPU-only) is intentionally excluded — no GRES.
-PARTITIONS = ["a100", "b200", "b300", "h100", "h200", "l40s"]
+PARTITIONS = ["a100", "b200", "b300", "h100", "h200", "l40s", "rtx6000"]
 TEAM_ACCOUNT = "dkhasha1"
+
+# rtx6000 nodes (gr101-103) are also reachable via a second, condo-restricted
+# submission partition tied to our dkhasha1_rtx6000 sub-account. It's the same
+# physical GPUs, so alias it onto "rtx6000" rather than tracking it as its own
+# capacity bucket (which would double-count the nodes).
+PARTITION_ALIASES = {"rtx6000_condo": "rtx6000"}
+
+# As of 2026-09, gr101-103 are visible to `sinfo` but not yet registered with
+# `scontrol`/slurmctld (nodes/partition still being provisioned) - so the
+# rtx6000 row's total/used/idle/down will read 0 until that's fixed upstream.
+# Team job accounting (squeue-based, below) is unaffected.
 
 # Skipjack's node states include "drng" (draining) in addition to the
 # down|drain|not_resp|maint states seen on dsai/rockfish.
@@ -189,6 +200,7 @@ for line in squeue_out.splitlines():
         continue
     user = fields[1].strip()
     part = fields[2].strip().rstrip("*")
+    part = PARTITION_ALIASES.get(part, part)
     tres = fields[3].strip() if len(fields) > 3 else ""
     account = fields[4].strip() if len(fields) > 4 else TEAM_ACCOUNT
 
@@ -257,6 +269,7 @@ for line in pending_out.splitlines():
     jobid      = parts[0].strip()
     user       = parts[1].strip()
     part       = parts[2].strip().rstrip("*") if len(parts) > 2 else ""
+    part       = PARTITION_ALIASES.get(part, part)
     gres       = parts[3].strip() if len(parts) > 3 else ""
     reason     = parts[4].strip() if len(parts) > 4 else ""
     # %V is the submission time in the cluster's local timezone (Slurm prints
