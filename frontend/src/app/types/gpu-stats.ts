@@ -30,6 +30,17 @@ export interface SkipjackTeamAccountUsage {
   capacity: number | null;
 }
 
+export interface SkipjackThroughput {
+  window_hours: number;
+  jobs_started: number;
+  /** Mean seconds between submission and start, over the window. Skewed by long-tail outliers; null if no jobs started. */
+  avg_wait_seconds: number | null;
+  /** Median seconds between submission and start - more representative of a "typical" job than the mean. */
+  median_wait_seconds: number | null;
+  /** Average seconds between one job starting and the next (window / jobs_started) - i.e. 1/(start rate), expressed as a duration. NOT the same as how long any individual job waited. */
+  avg_interstart_seconds: number | null;
+}
+
 export interface SkipjackStats {
   timestamp: string;
   server: "skipjack";
@@ -50,6 +61,7 @@ export interface SkipjackStats {
   pending_jobs: PendingJob[];
   dkhasha1_pending: PendingSummary;
   cluster_account_usage: SkipjackAccountUsage[];
+  throughput: SkipjackThroughput;
 }
 
 export interface DSAIPartition {
@@ -89,6 +101,8 @@ export interface PendingJob {
   scheduled_start?: string | null;
   /** SLURM account the job was submitted under (e.g. "dkhasha1_main_a"). */
   account?: string;
+  /** Raw Slurm scheduling priority (higher runs sooner), if known. */
+  priority?: number | null;
 }
 
 export interface PendingSummary {
@@ -254,6 +268,9 @@ export interface HistoricalDataPoint {
   skipjack_team_usage: number;
   skipjack_total_usage: number;
   skipjack_pending_gpus: number;
+  skipjack_avg_wait_seconds: number | null;
+  skipjack_median_wait_seconds: number | null;
+  skipjack_avg_interstart_seconds: number | null;
   dsai_team_usage: number;
   dsai_total_usage: number;
   dsai_pending_gpus: number;

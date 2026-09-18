@@ -14,15 +14,16 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     return (
       <div className="space-y-6">
         {[
-          { title: "Skipjack Cluster", color: "text-indigo-600" },
-          { title: "Rockfish Cluster", color: "text-blue-600" },
-          { title: "IA1 Node", color: "text-green-600" },
+          { title: "Skipjack Cluster - GPU Usage Over Time", color: "text-indigo-600" },
+          { title: "Skipjack Queue Speed Over Time", color: "text-indigo-600" },
+          { title: "Rockfish Cluster - GPU Usage Over Time", color: "text-blue-600" },
+          { title: "IA1 Node - GPU Usage Over Time", color: "text-green-600" },
         ].map(({ title, color }) => (
           <Card key={title} className="w-full">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <TrendingUp className={`h-5 w-5 ${color}`} />
-                <CardTitle>{title} - GPU Usage Over Time</CardTitle>
+                <CardTitle>{title}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -51,6 +52,14 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     time: formatTime(point.timestamp),
     "Team Usage": point.skipjack_team_usage,
     "Pending": point.skipjack_pending_gpus,
+  }));
+
+  const skipjackSpeedData = data.map((point) => ({
+    time: formatTime(point.timestamp),
+    "Avg Wait (min)": point.skipjack_avg_wait_seconds != null ? point.skipjack_avg_wait_seconds / 60 : null,
+    "Median Wait (min)": point.skipjack_median_wait_seconds != null ? point.skipjack_median_wait_seconds / 60 : null,
+    "Avg Time Between Starts (min)":
+      point.skipjack_avg_interstart_seconds != null ? point.skipjack_avg_interstart_seconds / 60 : null,
   }));
 
   const rockfishData = data.map((point) => ({
@@ -111,6 +120,65 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Skipjack Queue Speed Chart */}
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-indigo-600" />
+            <CardTitle>Skipjack Queue Speed Over Time</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={skipjackSpeedData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 12 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                label={{ value: "Minutes", angle: -90, position: "insideLeft" }}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  border: "1px solid #ccc",
+                  borderRadius: "8px"
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="Avg Wait (min)"
+                stroke="#4f46e5"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="Median Wait (min)"
+                stroke="#818cf8"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+                connectNulls
+              />
+              <Line
+                type="monotone"
+                dataKey="Avg Time Between Starts (min)"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={false}
+                connectNulls
               />
             </LineChart>
           </ResponsiveContainer>

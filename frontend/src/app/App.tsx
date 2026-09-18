@@ -11,8 +11,18 @@ import { useTheme } from "./hooks/useTheme";
 
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 import { Button } from "./components/ui/button";
-import { RefreshCw, Activity, AlertCircle, BarChart2 } from "lucide-react";
+import { RefreshCw, Activity, AlertCircle, BarChart2, Info } from "lucide-react";
 import { Badge } from "./components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
+
+function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return "—";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
+}
 
 
 export default function App() {
@@ -134,7 +144,7 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Stats — active GPU counts, shown first for a quick overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">Skipjack Team Usage</div>
             {skipjackStats ? (
@@ -166,6 +176,62 @@ export default function App() {
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {skipjackStats.dkhasha1_pending.total_gpus_requested} GPUs requested
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+              Skipjack Queue Speed
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="cursor-help text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs space-y-1.5">
+                    <p>
+                      <strong>Avg wait</strong>: mean time from submit to start, across all jobs (including
+                      individual array tasks) that started in the window. A few multi-day outliers can drag
+                      this up.
+                    </p>
+                    <p>
+                      <strong>Median wait</strong>: the middle value — more representative of what a typical
+                      job actually experiences.
+                    </p>
+                    <p>
+                      <strong>Time between starts</strong>: window duration ÷ number of job-starts (i.e.
+                      1 ÷ throughput). Reflects how often <em>some</em> job starts, not any one job's own wait.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            {skipjackStats?.throughput ? (
+              <>
+                <div className="flex items-baseline gap-4">
+                  <div>
+                    <span className="text-2xl font-bold text-indigo-600">
+                      {formatDuration(skipjackStats.throughput.avg_wait_seconds)}
+                    </span>
+                    <div className="text-xs text-muted-foreground">avg wait</div>
+                  </div>
+                  <div>
+                    <span className="text-2xl font-bold text-indigo-600">
+                      {formatDuration(skipjackStats.throughput.avg_interstart_seconds)}
+                    </span>
+                    <div className="text-xs text-muted-foreground">between starts</div>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  median wait: {formatDuration(skipjackStats.throughput.median_wait_seconds)} • last{" "}
+                  {skipjackStats.throughput.window_hours}h
                 </div>
               </>
             ) : (

@@ -1,13 +1,47 @@
-import { useState } from "react";
-import { SkipjackStats } from "../types/gpu-stats";
+import { useMemo, useState } from "react";
+import { PendingJob, SkipjackStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Server, Users, AlertCircle, Clock } from "lucide-react";
+import { Server, Users, AlertCircle, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason, PendingReasonLegend } from "./PendingReason";
 
 const TOP_USERS_SHOWN = 3;
 const USER_BREAKDOWN_CAP = 10;
+
+type QueueSortField = "queued_at" | "user" | "gpus" | "priority" | "reason";
+
+const QUEUE_SORT_FIELD_LABELS: Record<QueueSortField, string> = {
+  queued_at: "Submitted",
+  user: "User",
+  gpus: "GPUs requested",
+  priority: "Priority",
+  reason: "Reason",
+};
+
+const QUEUE_SORT_FIELD_DEFAULT_DIR: Record<QueueSortField, "asc" | "desc"> = {
+  queued_at: "asc",
+  user: "asc",
+  gpus: "desc",
+  priority: "desc",
+  reason: "asc",
+};
+
+function compareQueueField(a: PendingJob, b: PendingJob, field: QueueSortField): number {
+  switch (field) {
+    case "queued_at":
+      return (a.queued_at ? new Date(a.queued_at).getTime() : 0) -
+        (b.queued_at ? new Date(b.queued_at).getTime() : 0);
+    case "user":
+      return a.user.localeCompare(b.user);
+    case "gpus":
+      return a.gpus_requested - b.gpus_requested;
+    case "priority":
+      return (a.priority ?? -Infinity) - (b.priority ?? -Infinity);
+    case "reason":
+      return (a.reason ?? "").localeCompare(b.reason ?? "");
+  }
+}
 
 interface SkipjackServerCardProps {
   stats: SkipjackStats | null;
@@ -37,6 +71,10 @@ const DOWN_COLOR = "#f87171"; // red-400
 export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set());
   const [showIndividualUsers, setShowIndividualUsers] = useState(false);
+  const [queueSort, setQueueSort] = useState<{ field: QueueSortField; dir: "asc" | "desc" }>({
+    field: "queued_at",
+    dir: "asc",
+  });
   const toggleExpanded = (partition: string) => {
     setExpandedTypes((prev) => {
       const next = new Set(prev);
@@ -98,6 +136,15 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
         (b.running?.total ?? 0) - (a.running?.total ?? 0) ||
         (b.pending?.gpus ?? 0) - (a.pending?.gpus ?? 0)
     );
+
+  const sortedPendingJobs = useMemo(
+    () =>
+      [...stats.pending_jobs].sort((a, b) => {
+        const cmp = compareQueueField(a, b, queueSort.field);
+        return queueSort.dir === "asc" ? cmp : -cmp;
+      }),
+    [stats.pending_jobs, queueSort]
+  );
 
   return (
     <Card className="w-full">
@@ -391,16 +438,43 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
         {/* Pending Queue */}
         {stats.dkhasha1_pending?.job_count > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-purple-500" />
-              Pending Queue
-              <Badge variant="outline" className="text-purple-600 border-purple-600 text-xs">
-                {stats.dkhasha1_pending.job_count} jobs · {stats.dkhasha1_pending.total_gpus_requested} GPUs
-              </Badge>
-            </h4>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <Clock className="h-4 w-4 text-purple-500" />
+                Pending Queue
+                <Badge variant="outline" className="text-purple-600 border-purple-600 text-xs">
+                  {stats.dkhasha1_pending.job_count} jobs · {stats.dkhasha1_pending.total_gpus_requested} GPUs
+                </Badge>
+              </h4>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Sort by</span>
+                <select
+                  value={queueSort.field}
+                  onChange={(e) => {
+                    const field = e.target.value as QueueSortField;
+                    setQueueSort({ field, dir: QUEUE_SORT_FIELD_DEFAULT_DIR[field] });
+                  }}
+                  className="border rounded px-1.5 py-0.5 bg-background text-xs"
+                >
+                  {Object.entries(QUEUE_SORT_FIELD_LABELS).map(([field, label]) => (
+                    <option key={field} value={field}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setQueueSort((s) => ({ ...s, dir: s.dir === "asc" ? "desc" : "asc" }))}
+                  className="p-1 rounded hover:bg-muted"
+                  title={queueSort.dir === "asc" ? "Ascending" : "Descending"}
+                >
+                  {queueSort.dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
             <PendingReasonLegend />
             <div className="space-y-1">
-              {stats.pending_jobs.map((job) => {
+              {sortedPendingJobs.map((job) => {
                 const queuedAgo = formatQueuedAgo(job.queued_at);
                 return (
                   <div

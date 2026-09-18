@@ -10,6 +10,7 @@ skipjack remote server via SSH automatically.
 import json
 import os
 import re
+import statistics
 import subprocess
 import sys
 from collections import defaultdict
@@ -283,7 +284,7 @@ print()
 
 pending_out = run([
     "squeue",
-    "-o", "%i|%u|%P|%b|%r|%V|%a|%S",
+    "-o", "%i|%u|%P|%b|%r|%V|%a|%S|%Q",
     "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "PD",
     "--noheader",
@@ -312,6 +313,9 @@ for line in pending_out.splitlines():
     # scheduler has computed one (e.g. a BeginTime job, or a backfill
     # estimate); "N/A" means no estimate is available yet.
     start_raw  = parts[7].strip() if len(parts) > 7 else ""
+    # %Q is the job's raw integer scheduling priority - higher runs sooner.
+    priority_raw = parts[8].strip() if len(parts) > 8 else ""
+    priority = int(priority_raw) if priority_raw.isdigit() else None
     queued_at = None
     if submit_raw and submit_raw != "N/A":
         try:
@@ -337,7 +341,7 @@ for line in pending_out.splitlines():
     if not gpu_type and part in PARTITIONS:
         gpu_type = part.upper()
 
-    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at, "scheduled_start": scheduled_start, "account": account})
+    pending_jobs.append({"jobid": jobid, "user": user, "partition": part, "gpus_requested": gpus, "gpu_type": gpu_type, "reason": reason, "queued_at": queued_at, "scheduled_start": scheduled_start, "account": account, "priority": priority})
     pending_user_gpus[user] += gpus
     if account in team_account_pending_gpus:
         team_account_pending_gpus[account] += gpus
@@ -424,6 +428,51 @@ sorted_accounts = sorted(
 )
 
 # ============================================================
+# Section 5: Team queue throughput/wait time over a trailing window
+# ============================================================
+
+THROUGHPUT_WINDOW_HOURS = 24
+
+sacct_out = run([
+    # sacct defaults to showing only the invoking (SSH) user's own jobs,
+    # unlike squeue - --allusers is required to see the whole team's jobs.
+    "sacct", "--allusers", "--accounts=" + ",".join(TEAM_ACCOUNTS),
+    "--starttime=now-{}hours".format(THROUGHPUT_WINDOW_HOURS), "--endtime=now",
+    "-o", "JobID,Submit,Start,State",
+    "--noheader", "-P", "--allocations",
+])
+
+wait_seconds_samples = []
+for line in sacct_out.splitlines():
+    parts = line.split("|")
+    if len(parts) < 4:
+        continue
+    jobid, submit_raw, start_raw, state_raw = (p.strip() for p in parts[:4])
+    if not jobid or "." in jobid:
+        continue  # skip job-step sub-records (e.g. "12345.batch")
+    if not start_raw or start_raw in ("Unknown", "None", ""):
+        continue  # job never got allocated (still pending, or record incomplete)
+    try:
+        submit_dt = datetime.strptime(submit_raw, "%Y-%m-%dT%H:%M:%S")
+        start_dt = datetime.strptime(start_raw, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        continue
+    wait_seconds_samples.append((start_dt - submit_dt).total_seconds())
+
+jobs_started = len(wait_seconds_samples)
+# The mean is easily dragged around by a handful of jobs that waited days
+# (a long tail is common here), so it doesn't represent a "typical" job's
+# wait - report the median alongside it for that reason.
+avg_wait_seconds = (sum(wait_seconds_samples) / jobs_started) if jobs_started else None
+median_wait_seconds = statistics.median(wait_seconds_samples) if wait_seconds_samples else None
+# Average time between one job starting and the next, i.e. 1/(start rate) -
+# NOT the same thing as how long any individual job waited (that's avg/median
+# wait above). Kept in time units so both throughput and wait read the same way.
+avg_interstart_seconds = (
+    (THROUGHPUT_WINDOW_HOURS * 3600 / jobs_started) if jobs_started else None
+)
+
+# ============================================================
 # JSON output
 # ============================================================
 
@@ -506,6 +555,13 @@ report = {
         }
         for a in sorted_accounts if acct_total(a) > 0 or cluster_account_queue[a] > 0
     ],
+    "throughput": {
+        "window_hours": THROUGHPUT_WINDOW_HOURS,
+        "jobs_started": jobs_started,
+        "avg_wait_seconds": avg_wait_seconds,
+        "median_wait_seconds": median_wait_seconds,
+        "avg_interstart_seconds": avg_interstart_seconds,
+    },
 }
 
 print(json.dumps(report, indent=2))
