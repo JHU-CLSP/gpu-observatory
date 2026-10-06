@@ -5,6 +5,7 @@ import { Badge } from "./ui/badge";
 import { Server, Users, AlertCircle, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason, PendingReasonLegend } from "./PendingReason";
+import { SkipjackFairShare } from "./SkipjackFairShare";
 
 const TOP_USERS_SHOWN = 3;
 const USER_BREAKDOWN_CAP = 10;
@@ -205,6 +206,8 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
             </div>
           </div>
         )}
+
+        {stats.fairshare && <SkipjackFairShare data={stats.fairshare} />}
 
         {/* Total Cluster Usage */}
         <div className="space-y-2">

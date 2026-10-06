@@ -1,4 +1,4 @@
-import { DSAIStats, RockfishStats, IA1Stats, HistoricalDataPoint } from "../types/gpu-stats";
+import { DSAIStats, IA1Stats, HistoricalDataPoint } from "../types/gpu-stats";
 
 export const getMockDSAIStats = (): DSAIStats => ({
   timestamp: new Date().toISOString(),
@@ -83,66 +83,6 @@ const dsaiStats = getMockDSAIStats();
 dsaiStats.partition_totals.used = dsaiStats.partitions.reduce((sum, p) => sum + p.used, 0);
 dsaiStats.partition_totals.idle = dsaiStats.partitions.reduce((sum, p) => sum + p.idle, 0);
 
-export const getMockRockfishStats = (): RockfishStats => ({
-  timestamp: new Date().toISOString(),
-  server: "rockfish",
-  partitions: [
-    {
-      partition: "a100",
-      total: 52,
-      used: Math.floor(Math.random() * 20) + 10,
-      idle: 0,
-      down: 12
-    },
-    {
-      partition: "ica100",
-      total: 24,
-      used: Math.floor(Math.random() * 15) + 5,
-      idle: 0,
-      down: 16
-    },
-    {
-      partition: "l40s",
-      total: 32,
-      used: Math.floor(Math.random() * 10),
-      idle: 0,
-      down: 0
-    },
-    {
-      partition: "v100",
-      total: 4,
-      used: Math.floor(Math.random() * 3),
-      idle: 0,
-      down: 0
-    }
-  ].map(p => ({ ...p, idle: p.total - p.used - p.down })),
-  partition_totals: {
-    total: 112,
-    used: 0,
-    idle: 0,
-    down: 28
-  },
-  dkhasha1_users: Math.random() > 0.5 ? [
-    {
-      user: "tli104",
-      gpus: { a100: Math.floor(Math.random() * 4) + 2 },
-      total: 0
-    }
-  ].map(u => ({ ...u, total: Object.values(u.gpus).reduce((a, b) => a + b, 0) })) : [],
-  dkhasha1_totals: {
-    by_partition: {
-      a100: 0,
-      ica100: 0,
-      l40s: 0,
-      v100: 0
-    },
-    total: 0
-  },
-  interactive_jobs: [],
-  scratch_space_total_gb: 100000,
-  scratch_space_used_gb: Math.floor(Math.random() * 30000) + 50000
-});
-
 export const getMockIA1Stats = (): IA1Stats => {
   const gpus = Array.from({ length: 10 }, (_, i) => ({
     index: i,
@@ -210,8 +150,6 @@ export const generateHistoricalData = (hours: number = 24): HistoricalDataPoint[
       timestamp: timestamp.toISOString(),
       dsai_team_usage: Math.floor(Math.random() * 10) + 25,
       dsai_total_usage: Math.floor(Math.random() * 50) + 150,
-      rockfish_team_usage: Math.floor(Math.random() * 8),
-      rockfish_total_usage: Math.floor(Math.random() * 20) + 20,
       ia1_active: Math.floor(Math.random() * 4) + 3,
       ia1_allocated: Math.floor(Math.random() * 3) + 8
     });

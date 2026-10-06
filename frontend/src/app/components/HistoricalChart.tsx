@@ -16,7 +16,6 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
         {[
           { title: "Skipjack Cluster - GPU Usage Over Time", color: "text-indigo-600" },
           { title: "Skipjack Queue Speed Over Time", color: "text-indigo-600" },
-          { title: "Rockfish Cluster - GPU Usage Over Time", color: "text-blue-600" },
           { title: "IA1 Node - GPU Usage Over Time", color: "text-green-600" },
         ].map(({ title, color }) => (
           <Card key={title} className="w-full">
@@ -60,12 +59,6 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     "Median Wait (min)": point.skipjack_median_wait_seconds != null ? point.skipjack_median_wait_seconds / 60 : null,
     "Avg Time Between Starts (min)":
       point.skipjack_avg_interstart_seconds != null ? point.skipjack_avg_interstart_seconds / 60 : null,
-  }));
-
-  const rockfishData = data.map((point) => ({
-    time: formatTime(point.timestamp),
-    "Team Usage": point.rockfish_team_usage,
-    "Pending": point.rockfish_pending_gpus,
   }));
 
   const ia1Data = data.map((point) => ({
@@ -179,55 +172,6 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 strokeWidth={2}
                 dot={false}
                 connectNulls
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Rockfish Chart */}
-      <Card className="w-full">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-blue-600" />
-            <CardTitle>Rockfish Cluster - GPU Usage Over Time</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={rockfishData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="time" 
-                tick={{ fontSize: 12 }}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                label={{ value: "GPU Count", angle: -90, position: "insideLeft" }}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #ccc",
-                  borderRadius: "8px"
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="Team Usage"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={false}
-              />
-              <Line
-                type="monotone"
-                dataKey="Pending"
-                stroke="#93c5fd"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
               />
             </LineChart>
           </ResponsiveContainer>

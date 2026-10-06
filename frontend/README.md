@@ -1,6 +1,6 @@
 # IA Lab GPU Observatory
 
-Real-time GPU monitoring dashboard for the IA Lab's three compute resources: DSAI cluster, Rockfish cluster, and IA1 node.
+Real-time GPU monitoring dashboard for the IA Lab's compute resources: DSAI cluster and IA1 node.
 
 ## Architecture
 
@@ -8,7 +8,6 @@ Real-time GPU monitoring dashboard for the IA Lab's three compute resources: DSA
 gpu-stats-ia1-lab/
   app.py                    # FastAPI backend — runs collector scripts, caches results, serves frontend
   danielgpus_dsai.py        # DSAI SLURM collector (SSH → dsai)
-  danielgpus_rockfish.py    # Rockfish SLURM collector (SSH → rockfish)
   danielgpus_ia1.py         # IA1 nvidia-smi collector (SSH → ia1)
   run.sh                    # Single-command launcher (builds frontend + starts server)
   frontend/                 # React/TypeScript frontend (Vite)
@@ -56,10 +55,10 @@ Python packages (install with `pip install -e .`):
 | uvicorn   | ≥ 0.29  |
 | aiofiles  | ≥ 23.0  |
 
-SSH aliases `dsai`, `rockfish`, `ia1` must be configured in `~/.ssh/config` on the machine running the server.
+SSH aliases `dsai`, `ia1` must be configured in `~/.ssh/config` on the machine running the server.
 
 ## Features
 
-- **DSAI & Rockfish**: partition GPU totals, team usage, idle-allocated GPU detection (via SSH + nvidia-smi to compute nodes), interactive job warnings, scratch space
+- **DSAI**: partition GPU totals, team usage, idle-allocated GPU detection (via SSH + nvidia-smi to compute nodes), interactive job warnings, scratch space
 - **IA1**: per-GPU utilization grid, per-user breakdown with idle GPU annotation, scratch space
 - **Historical charts**: 24-hour GPU usage trends (sampled every 15 min or on manual refresh)

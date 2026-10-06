@@ -40,7 +40,7 @@ TEAM_ACCOUNT = "dkhasha1"
 PARTITION_ALIASES = {"rtx6000_condo": "rtx6000"}
 
 # Skipjack's node states include "drng" (draining) in addition to the
-# down|drain|not_resp|maint states seen on dsai/rockfish.
+# down|drain|not_resp|maint states seen on dsai.
 DOWN_STATE_RE = r"down|drain|drng|not_resp|maint|fail"
 
 
@@ -85,6 +85,102 @@ def get_team_account_caps():
 
 
 TEAM_ACCOUNT_CAPS = get_team_account_caps()
+
+
+# Fair share: Skipjack uses priority/multifactor with Fair Tree, where fair
+# share carries the largest weight. LevelFS (NormShares / EffectvUsage) is
+# what Fair Tree ranks siblings by at each level: >1 means under-using its
+# share, <1 over-using. sshare -P keeps leading spaces on Account to mark tree
+# depth, which lets us recover both our sub-account tree and the chain of
+# ancestors above it (e.g. csci -> en).
+def _parse_float(s):
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def get_fairshare():
+    out = run(["sshare", "-l", "-P", "-n", "-o", "Account,User,RawShares,NormShares,EffectvUsage,LevelFS"])
+    rows = []
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) < 6 or parts[1].strip():
+            continue  # user-level rows
+        name = parts[0].strip()
+        level_fs = _parse_float(parts[5].strip())
+        rows.append({
+            "account": name,
+            "depth": len(parts[0]) - len(parts[0].lstrip(" ")),
+            "raw_shares": parts[2].strip(),
+            "norm_shares": _parse_float(parts[3].strip()),
+            "effective_usage": _parse_float(parts[4].strip()),
+            # "inf" (no usage at all) isn't valid JSON; flag it as unused instead.
+            "level_fs": None if level_fs == float("inf") else level_fs,
+            "unused": level_fs == float("inf"),
+        })
+
+    pi_name = "pi-" + TEAM_ACCOUNT
+    pi_idx = next((i for i, r in enumerate(rows) if r["account"] == pi_name), None)
+    if pi_idx is None:
+        return None
+
+    # Ancestors: walk upward, taking each row shallower than the last one seen.
+    ancestors = []
+    depth = rows[pi_idx]["depth"]
+    for r in reversed(rows[:pi_idx]):
+        if r["depth"] < depth and r["account"] != "root":
+            ancestors.append(r)
+            depth = r["depth"]
+            if depth == 0:
+                break
+
+    # Our subtree: everything after pi-dkhasha1 that is nested deeper than it.
+    accounts = []
+    for r in rows[pi_idx + 1:]:
+        if r["depth"] <= rows[pi_idx]["depth"]:
+            break
+        accounts.append(dict(r, depth=r["depth"] - rows[pi_idx]["depth"] - 1))
+
+    # sprio's normalized fair-share factor (0-1) is what actually goes into a
+    # pending job's priority, after the whole tree is taken into account -
+    # e.g. a sub-account nested under a 0-share parent gets ~0 here even if its
+    # own LevelFS looks fine. Only pending jobs appear in sprio.
+    sprio_out = run(["sprio", "-h", "-o", "%i|%o|%f"])
+    team_factors = defaultdict(list)
+    cluster_factors = []
+    for line in sprio_out.splitlines():
+        parts = line.split("|")
+        if len(parts) < 3:
+            continue
+        f = _parse_float(parts[2].strip())
+        if f is None:
+            continue
+        cluster_factors.append(f)
+        if parts[1].strip() in TEAM_ACCOUNTS:
+            team_factors[parts[1].strip()].append(f)
+    for a in accounts:
+        samples = team_factors.get(a["account"])
+        a["pending_jobs"] = len(samples) if samples else 0
+        a["pending_fs_factor"] = statistics.median(samples) if samples else None
+
+    return {
+        "weight": PRIORITY_WEIGHT_FAIRSHARE,
+        "pi": rows[pi_idx],
+        "ancestors": ancestors,
+        "accounts": accounts,
+        "cluster_median_pending_fs_factor": statistics.median(cluster_factors) if cluster_factors else None,
+    }
+
+
+def get_priority_weight_fairshare():
+    out = run(["scontrol", "show", "config"])
+    m = re.search(r"PriorityWeightFairShare\s*=\s*(\d+)", out)
+    return int(m.group(1)) if m else None
+
+
+PRIORITY_WEIGHT_FAIRSHARE = get_priority_weight_fairshare()
+FAIRSHARE = get_fairshare()
 
 
 # ============================================================
@@ -144,7 +240,7 @@ for line in scontrol_out.splitlines():
         current_state = ""
 
     # Skipjack's GRES/AllocTRES are untyped (gres/gpu=N, not gres/gpu:h100=N),
-    # so CfgTRES/AllocTRES parsing mirrors danielgpus_rockfish.py.
+    # so CfgTRES/AllocTRES parsing is done by hand here.
     if "CfgTRES=" in line:
         m = re.search(r"gres/gpu=(\d+)", line)
         if m:
@@ -438,16 +534,20 @@ sacct_out = run([
     # unlike squeue - --allusers is required to see the whole team's jobs.
     "sacct", "--allusers", "--accounts=" + ",".join(TEAM_ACCOUNTS),
     "--starttime=now-{}hours".format(THROUGHPUT_WINDOW_HOURS), "--endtime=now",
-    "-o", "JobID,Submit,Start,State",
+    "-o", "JobID,Submit,Start,State,Partition,AllocTRES",
     "--noheader", "-P", "--allocations",
 ])
 
 wait_seconds_samples = []
+# (gpu_type, gpus_requested) -> [wait_seconds, ...], so we can see whether
+# bigger requests (or a particular GPU type) wait longer than others.
+bucket_wait_seconds = defaultdict(list)
+
 for line in sacct_out.splitlines():
     parts = line.split("|")
-    if len(parts) < 4:
+    if len(parts) < 6:
         continue
-    jobid, submit_raw, start_raw, state_raw = (p.strip() for p in parts[:4])
+    jobid, submit_raw, start_raw, state_raw, part_raw, alloc_tres = (p.strip() for p in parts[:6])
     if not jobid or "." in jobid:
         continue  # skip job-step sub-records (e.g. "12345.batch")
     if not start_raw or start_raw in ("Unknown", "None", ""):
@@ -457,7 +557,13 @@ for line in sacct_out.splitlines():
         start_dt = datetime.strptime(start_raw, "%Y-%m-%dT%H:%M:%S")
     except ValueError:
         continue
-    wait_seconds_samples.append((start_dt - submit_dt).total_seconds())
+    wait = (start_dt - submit_dt).total_seconds()
+    wait_seconds_samples.append(wait)
+
+    part = PARTITION_ALIASES.get(part_raw.rstrip("*"), part_raw.rstrip("*"))
+    m = re.search(r"gres/gpu[^=,\s]*=(\d+)", alloc_tres)
+    if part in PARTITIONS and m:
+        bucket_wait_seconds[(part, int(m.group(1)))].append(wait)
 
 jobs_started = len(wait_seconds_samples)
 # The mean is easily dragged around by a handful of jobs that waited days
@@ -470,6 +576,22 @@ median_wait_seconds = statistics.median(wait_seconds_samples) if wait_seconds_sa
 # wait above). Kept in time units so both throughput and wait read the same way.
 avg_interstart_seconds = (
     (THROUGHPUT_WINDOW_HOURS * 3600 / jobs_started) if jobs_started else None
+)
+
+# Breakdown of wait time by what was actually requested (GPU type + count),
+# to see whether bigger requests or a particular type wait longer.
+by_request_size = sorted(
+    (
+        {
+            "gpu_type": gpu_type,
+            "gpus_requested": gpus,
+            "count": len(samples),
+            "avg_wait_seconds": sum(samples) / len(samples),
+            "median_wait_seconds": statistics.median(samples),
+        }
+        for (gpu_type, gpus), samples in bucket_wait_seconds.items()
+    ),
+    key=lambda b: (PARTITIONS.index(b["gpu_type"]), b["gpus_requested"]),
 )
 
 # ============================================================
@@ -500,6 +622,7 @@ report = {
         "down":  grand_down,
     },
     "dkhasha1_accounts": TEAM_ACCOUNTS,
+    "fairshare": FAIRSHARE,
     "team_account_usage": [
         {
             "account": acct,
@@ -561,6 +684,7 @@ report = {
         "avg_wait_seconds": avg_wait_seconds,
         "median_wait_seconds": median_wait_seconds,
         "avg_interstart_seconds": avg_interstart_seconds,
+        "by_request_size": by_request_size,
     },
 }
 

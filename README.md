@@ -1,6 +1,6 @@
 # GPU Stats Dashboard
 
-Real-time GPU monitoring for DSAI, Rockfish, and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
+Real-time GPU monitoring for DSAI and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
 
 ![screenshot-2.png](screenshot-2.png)
 ![screenshot-1.png](screenshot-1.png)
@@ -9,7 +9,7 @@ Real-time GPU monitoring for DSAI, Rockfish, and IA1 servers. A FastAPI backend 
 
 - Python 3.9+
 - Node.js 18+
-- SSH access configured for `dsai`, `rockfish`, and `ia1` hosts
+- SSH access configured for `dsai` and `ia1` hosts
 
 ## Setup
 
@@ -63,7 +63,6 @@ Open http://localhost:5173 in your browser.
 |--------|------|-------------|
 | `GET` | `/stats` | All servers combined |
 | `GET` | `/stats/dsai` | DSAI stats |
-| `GET` | `/stats/rockfish` | Rockfish stats |
 | `GET` | `/stats/ia1` | IA1 stats |
 | `POST` | `/stats/refresh` | Force-refresh all servers |
 | `POST` | `/stats/{server}/refresh` | Force-refresh one server |
@@ -77,7 +76,6 @@ gpu-stats-ia1-lab/
   app.py                  # FastAPI backend
   pyproject.toml          # Python dependencies
   danielgpus_dsai.py      # DSAI collector script
-  danielgpus_rockfish.py  # Rockfish collector script
   danielgpus_ia1.py       # IA1 collector script
   frontend/               # React/Vite frontend
     src/app/App.tsx

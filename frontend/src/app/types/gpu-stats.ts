@@ -30,6 +30,45 @@ export interface SkipjackTeamAccountUsage {
   capacity: number | null;
 }
 
+export interface SkipjackFairShareNode {
+  account: string;
+  /** Nesting depth (0 = direct child of pi-dkhasha1 for team accounts). */
+  depth: number;
+  raw_shares: string;
+  /** This account's share among its siblings (0-1). */
+  norm_shares: number | null;
+  /** This account's share of its parent's usage (0-1), decayed over a 30-day half-life. */
+  effective_usage: number | null;
+  /** norm_shares / effective_usage; >1 = under-using its share, <1 = over-using. null when unused. */
+  level_fs: number | null;
+  /** No recorded usage at all (Slurm reports LevelFS as inf). */
+  unused: boolean;
+}
+
+export interface SkipjackFairShareAccount extends SkipjackFairShareNode {
+  pending_jobs: number;
+  /** Median normalized fair-share factor (0-1) of this account's pending jobs, from sprio. */
+  pending_fs_factor: number | null;
+}
+
+export interface SkipjackFairShare {
+  /** PriorityWeightFairShare - fair-share factor is multiplied by this in job priority. */
+  weight: number | null;
+  pi: SkipjackFairShareNode;
+  /** Nearest first, e.g. [csci, en]. */
+  ancestors: SkipjackFairShareNode[];
+  accounts: SkipjackFairShareAccount[];
+  cluster_median_pending_fs_factor: number | null;
+}
+
+export interface SkipjackWaitBucket {
+  gpu_type: string;
+  gpus_requested: number;
+  count: number;
+  avg_wait_seconds: number;
+  median_wait_seconds: number;
+}
+
 export interface SkipjackThroughput {
   window_hours: number;
   jobs_started: number;
@@ -39,6 +78,8 @@ export interface SkipjackThroughput {
   median_wait_seconds: number | null;
   /** Average seconds between one job starting and the next (window / jobs_started) - i.e. 1/(start rate), expressed as a duration. NOT the same as how long any individual job waited. */
   avg_interstart_seconds: number | null;
+  /** Wait-time breakdown by exactly what was requested (GPU type + count), so it's clear whether bigger requests wait longer. */
+  by_request_size: SkipjackWaitBucket[];
 }
 
 export interface SkipjackStats {
@@ -53,6 +94,7 @@ export interface SkipjackStats {
   };
   dkhasha1_accounts: string[];
   team_account_usage: SkipjackTeamAccountUsage[];
+  fairshare?: SkipjackFairShare | null;
   dkhasha1_users: DSAIUserGPUs[];
   dkhasha1_totals: {
     by_partition: Record<string, number>;
@@ -191,36 +233,6 @@ export interface DSAIStats {
   scratch_space_used_tb: number;
 }
 
-export interface RockfishPartition {
-  partition: string;
-  total: number;
-  used: number;
-  idle: number;
-  down: number;
-}
-
-export interface RockfishStats {
-  timestamp: string;
-  server: "rockfish";
-  partitions: RockfishPartition[];
-  partition_totals: {
-    total: number;
-    used: number;
-    idle: number;
-    down: number;
-  };
-  dkhasha1_users: DSAIUserGPUs[];
-  dkhasha1_totals: {
-    by_partition: Record<string, number>;
-    total: number;
-  };
-  interactive_jobs: DSAIInteractiveJob[];
-  pending_jobs: PendingJob[];
-  dkhasha1_pending: PendingSummary;
-  scratch_space_total_tb: number;
-  scratch_space_used_tb: number;
-}
-
 export interface IA1GPU {
   index: number;
   name: string;
@@ -276,9 +288,6 @@ export interface HistoricalDataPoint {
   dsai_pending_gpus: number;
   dsai_h200_team_usage: number;
   dsai_h200_total_usage: number;
-  rockfish_team_usage: number;
-  rockfish_total_usage: number;
-  rockfish_pending_gpus: number;
   ia1_active: number;
   ia1_allocated: number;
   ia1_pending_gpus: number;
