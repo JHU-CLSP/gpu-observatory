@@ -100,17 +100,79 @@ def _parse_float(s):
         return None
 
 
+# GrpTRESMins at or above this is the cluster's "effectively unlimited"
+# placeholder (e.g. gres/gpu=6000000000), not a real budget.
+UNLIMITED_TRES_MINS = 10 ** 8
+
+
+def _tres_gpu(tres):
+    m = re.search(r"gres/gpu=(\d+)", tres)
+    return int(m.group(1)) if m else None
+
+
+def get_priority_config():
+    out = run(["scontrol", "show", "config"])
+
+    def field(name):
+        m = re.search(name + r"\s*=\s*(\S+)", out)
+        return m.group(1) if m else None
+
+    def weight(name):
+        v = field(name)
+        return int(v) if v and v.isdigit() else 0
+
+    def days(name):
+        m = re.match(r"(\d+)-", field(name) or "")
+        return int(m.group(1)) if m else None
+
+    return {
+        # Relative weight of each priority factor (each factor is 0-1, then
+        # multiplied by its weight and summed into the job's priority).
+        "weights": {
+            "fairshare": weight("PriorityWeightFairShare"),
+            "age": weight("PriorityWeightAge"),
+            "job_size": weight("PriorityWeightJobSize"),
+            "qos": weight("PriorityWeightQOS"),
+            "partition": weight("PriorityWeightPartition"),
+        },
+        "max_age_days": days("PriorityMaxAge"),
+        "decay_half_life_days": days("PriorityDecayHalfLife"),
+        "usage_reset": field("PriorityUsageResetPeriod"),
+        "favor_small": field("PriorityFavorSmall") == "yes",
+        "backfill": field("SchedulerType") == "sched/backfill",
+    }
+
+
+def get_account_qos():
+    """Default QOS of each team account, plus each such QOS's per-user GPU limit."""
+    out = run(["sacctmgr", "show", "assoc", "where", "user=", "format=Account%40,QOS%40", "-n", "-P"])
+    acct_qos = {}
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 2 and parts[0].strip() in TEAM_ACCOUNTS and parts[1].strip():
+            acct_qos[parts[0].strip()] = parts[1].strip().split(",")[0]
+    qos_limits = {}
+    out = run(["sacctmgr", "show", "qos", "format=Name%40,MaxTRESPU%60", "-n", "-P"])
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 2 and parts[0].strip() in acct_qos.values():
+            qos_limits[parts[0].strip()] = _tres_gpu(parts[1])
+    return acct_qos, qos_limits
+
+
 def get_fairshare():
-    out = run(["sshare", "-l", "-P", "-n", "-o", "Account,User,RawShares,NormShares,EffectvUsage,LevelFS"])
+    out = run(["sshare", "-l", "-P", "-n", "-o", "Account,User,RawShares,NormShares,EffectvUsage,LevelFS,GrpTRESMins,GrpTRESRaw"])
     rows = []
     for line in out.splitlines():
         parts = line.split("|")
-        if len(parts) < 6 or parts[1].strip():
+        if len(parts) < 8 or parts[1].strip():
             continue  # user-level rows
-        name = parts[0].strip()
         level_fs = _parse_float(parts[5].strip())
+        budget_mins = _tres_gpu(parts[6])
+        used_mins = _tres_gpu(parts[7])
+        has_budget = budget_mins is not None and budget_mins < UNLIMITED_TRES_MINS
         rows.append({
-            "account": name,
+            "account": parts[0].strip(),
             "depth": len(parts[0]) - len(parts[0].lstrip(" ")),
             "raw_shares": parts[2].strip(),
             "norm_shares": _parse_float(parts[3].strip()),
@@ -118,6 +180,10 @@ def get_fairshare():
             # "inf" (no usage at all) isn't valid JSON; flag it as unused instead.
             "level_fs": None if level_fs == float("inf") else level_fs,
             "unused": level_fs == float("inf"),
+            # A hard GPU-time budget (GrpTRESMins), shown in GPU-hours. Jobs stop
+            # being scheduled once it's spent, until usage decays/resets.
+            "gpu_hours_budget": budget_mins / 60 if has_budget else None,
+            "gpu_hours_used": (used_mins or 0) / 60 if has_budget else None,
         })
 
     pi_name = "pi-" + TEAM_ACCOUNT
@@ -137,17 +203,37 @@ def get_fairshare():
 
     # Our subtree: everything after pi-dkhasha1 that is nested deeper than it.
     accounts = []
+    stack = []  # (depth, account) of the current branch, for parent lookup
     for r in rows[pi_idx + 1:]:
         if r["depth"] <= rows[pi_idx]["depth"]:
             break
-        accounts.append(dict(r, depth=r["depth"] - rows[pi_idx]["depth"] - 1))
+        d = r["depth"] - rows[pi_idx]["depth"] - 1
+        while stack and stack[-1][0] >= d:
+            stack.pop()
+        accounts.append(dict(r, depth=d, parent=stack[-1][1] if stack else None))
+        stack.append((d, r["account"]))
+    parents = {a["parent"] for a in accounts}
+    for a in accounts:
+        a["has_children"] = a["account"] in parents
 
-    # sprio's normalized fair-share factor (0-1) is what actually goes into a
-    # pending job's priority, after the whole tree is taken into account -
-    # e.g. a sub-account nested under a 0-share parent gets ~0 here even if its
-    # own LevelFS looks fine. Only pending jobs appear in sprio.
+    # In Fair Tree, a user's FairShare value in sshare is exactly the
+    # fair-share factor (0-1) their jobs get under that account, after the
+    # whole tree (department -> group -> account -> user) is applied. It's
+    # available even for accounts with nothing queued. Members differ only by
+    # their own usage within the account, so the median member is "typical".
+    out = run(["sshare", "-a", "-P", "-n", "-A", ",".join(TEAM_ACCOUNTS), "-o", "Account,User,FairShare"])
+    member_factors = defaultdict(list)
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) >= 3 and parts[1].strip():
+            f = _parse_float(parts[2].strip())
+            if f is not None:
+                member_factors[parts[0].strip()].append(f)
+
+    # Pending jobs across the whole cluster are the competition: rank our
+    # accounts' factor against theirs ("ahead of N% of waiting jobs").
     sprio_out = run(["sprio", "-h", "-o", "%i|%o|%f"])
-    team_factors = defaultdict(list)
+    pending_counts = defaultdict(int)
     cluster_factors = []
     for line in sprio_out.splitlines():
         parts = line.split("|")
@@ -157,29 +243,37 @@ def get_fairshare():
         if f is None:
             continue
         cluster_factors.append(f)
-        if parts[1].strip() in TEAM_ACCOUNTS:
-            team_factors[parts[1].strip()].append(f)
+        pending_counts[parts[1].strip()] += 1
+
+    acct_qos, qos_limits = get_account_qos()
     for a in accounts:
-        samples = team_factors.get(a["account"])
-        a["pending_jobs"] = len(samples) if samples else 0
-        a["pending_fs_factor"] = statistics.median(samples) if samples else None
+        samples = member_factors.get(a["account"])
+        factor = statistics.median(samples) if samples else None
+        a["fs_factor"] = factor
+        a["ahead_of_pct"] = (
+            100 * sum(1 for f in cluster_factors if f < factor) / len(cluster_factors)
+            if factor is not None and cluster_factors else None
+        )
+        a["pending_jobs"] = pending_counts.get(a["account"], 0)
+        qos = acct_qos.get(a["account"])
+        a["qos"] = qos
+        a["qos_gpus_per_user"] = qos_limits.get(qos)
+        a["gpu_cap"] = TEAM_ACCOUNT_CAPS.get(a["account"])
+        # Condo QOSes ("rtx6000_condo", "h200_condo") are tied to one GPU type;
+        # everything else runs on the general GPU partitions.
+        condo = qos[:-len("_condo")] if qos and qos.endswith("_condo") else None
+        a["gpu_types"] = [condo] if condo in PARTITIONS else None
 
     return {
-        "weight": PRIORITY_WEIGHT_FAIRSHARE,
+        "priority": get_priority_config(),
         "pi": rows[pi_idx],
         "ancestors": ancestors,
         "accounts": accounts,
         "cluster_median_pending_fs_factor": statistics.median(cluster_factors) if cluster_factors else None,
+        "cluster_pending_jobs": len(cluster_factors),
     }
 
 
-def get_priority_weight_fairshare():
-    out = run(["scontrol", "show", "config"])
-    m = re.search(r"PriorityWeightFairShare\s*=\s*(\d+)", out)
-    return int(m.group(1)) if m else None
-
-
-PRIORITY_WEIGHT_FAIRSHARE = get_priority_weight_fairshare()
 FAIRSHARE = get_fairshare()
 
 
@@ -292,6 +386,17 @@ for p in PARTITIONS:
         "allow_qos":      field("AllowQos"),
         "deny_qos":       field("DenyQos"),
     }
+
+# For the fair-share panel's "which account can run what": non-condo team
+# accounts run on the partitions open to the JHU-wide allocation
+# (AllowAccounts=jhu, which our accounts are granted via the jhu/jhu4 QOS) -
+# not the schmidt-only b200/b300.
+if FAIRSHARE:
+    FAIRSHARE["general_gpu_types"] = [
+        p for p in PARTITIONS
+        if partition_access[p]["allow_accounts"] in (None, "ALL")
+        or "jhu" in partition_access[p]["allow_accounts"].split(",")
+    ]
 
 
 # ============================================================

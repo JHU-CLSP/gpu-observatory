@@ -46,19 +46,44 @@ export interface SkipjackFairShareNode {
 }
 
 export interface SkipjackFairShareAccount extends SkipjackFairShareNode {
+  /** Parent team account, if nested (e.g. dkhasha1_main_a -> dkhasha1_main). */
+  parent: string | null;
+  /** Grouping-only account: jobs are submitted to its children. */
+  has_children: boolean;
+  /** Fair-share factor (0-1) of a typical member's jobs under this account (median over members). */
+  fs_factor: number | null;
+  /** % of all pending jobs on the cluster whose fair-share factor is below fs_factor. */
+  ahead_of_pct: number | null;
   pending_jobs: number;
-  /** Median normalized fair-share factor (0-1) of this account's pending jobs, from sprio. */
-  pending_fs_factor: number | null;
+  qos: string | null;
+  qos_gpus_per_user: number | null;
+  /** Hard GPU cap for the whole account (condo size), if any. */
+  gpu_cap: number | null;
+  /** GPU types this account is restricted to (condos); null = the general partitions. */
+  gpu_types: string[] | null;
+  gpu_hours_budget: number | null;
+  gpu_hours_used: number | null;
+}
+
+export interface SkipjackPriorityConfig {
+  weights: { fairshare: number; age: number; job_size: number; qos: number; partition: number };
+  max_age_days: number | null;
+  decay_half_life_days: number | null;
+  usage_reset: string | null;
+  favor_small: boolean;
+  backfill: boolean;
 }
 
 export interface SkipjackFairShare {
-  /** PriorityWeightFairShare - fair-share factor is multiplied by this in job priority. */
-  weight: number | null;
+  priority: SkipjackPriorityConfig;
   pi: SkipjackFairShareNode;
   /** Nearest first, e.g. [csci, en]. */
   ancestors: SkipjackFairShareNode[];
   accounts: SkipjackFairShareAccount[];
   cluster_median_pending_fs_factor: number | null;
+  cluster_pending_jobs: number;
+  /** GPU types open to non-condo team accounts. */
+  general_gpu_types?: string[];
 }
 
 export interface SkipjackWaitBucket {
