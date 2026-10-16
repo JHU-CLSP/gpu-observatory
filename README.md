@@ -1,15 +1,21 @@
 # GPU Stats Dashboard
 
-Real-time GPU monitoring for DSAI and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
+Real-time GPU monitoring for Skipjack, DSAI, and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
 
 ![screenshot-2.png](screenshot-2.png)
 ![screenshot-1.png](screenshot-1.png)
 
+## Skipjack detailed monitor
+
+Open **Skipjack details** for configurable account groups, quotas, fair share,
+user perspectives, capacity, queue wait statistics, and persistent history.
+See [setup, configuration, API, and tests](docs/skipjack-monitor.md).
+
 ## Requirements
 
 - Python 3.9+
-- Node.js 18+
-- SSH access configured for `dsai` and `ia1` hosts
+- Node.js 22 or 24 recommended for development
+- SSH access configured for `skipjack`, `dsai`, and `ia1` hosts (the detailed monitor can also read local Slurm)
 
 ## Setup
 
@@ -20,14 +26,14 @@ Real-time GPU monitoring for DSAI and IA1 servers. A FastAPI backend runs the co
 uv sync
 
 # Or with pip
-pip install fastapi uvicorn
+pip install fastapi uvicorn aiofiles 'pydantic>=2,<3'
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-npm install
+corepack pnpm install --frozen-lockfile
 ```
 
 ## Running
@@ -38,7 +44,7 @@ npm install
 ./run.sh
 ```
 
-Builds the frontend (skipped if `frontend/dist/` already exists) and serves everything on **http://localhost:5000**. Pass `--rebuild` to force a fresh frontend build.
+Builds the frontend (skipped if `frontend/dist/` already exists) and serves on port **5000**, with the frontend built for the existing `/port5000/` reverse proxy. For a direct localhost server, see the [monitor setup instructions](docs/skipjack-monitor.md#running). Pass `--rebuild` to force a fresh frontend build.
 
 ### Development (hot reload)
 
@@ -46,28 +52,31 @@ Open two terminals.
 
 **Terminal 1 — backend** (port 8000):
 ```bash
-uvicorn app:app --reload --port 8000
+uv run uvicorn app:app --reload --port 8000
 ```
 
 **Terminal 2 — frontend** (port 5173):
 ```bash
 cd frontend
-npm run dev
+corepack pnpm dev
 ```
 
-Open http://localhost:5173 in your browser.
+Open http://localhost:5173/port5000/ in your browser.
 
 ## API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/stats` | All servers combined |
+| `GET` | `/stats/skipjack` | Skipjack overview stats |
+| `GET` | `/stats/skipjack/monitor` | Detailed Skipjack monitor |
+| `GET` | `/stats/history` | Overview history |
 | `GET` | `/stats/dsai` | DSAI stats |
 | `GET` | `/stats/ia1` | IA1 stats |
 | `POST` | `/stats/refresh` | Force-refresh all servers |
 | `POST` | `/stats/{server}/refresh` | Force-refresh one server |
 
-Stats are cached for 15 minutes. The backend refreshes all servers on startup and every 15 minutes in the background.
+Overview stats are cached for 30 minutes. The backend refreshes all overview servers on startup and every 30 minutes in the background. The detailed monitor collects independently every five minutes by default.
 
 ## Project Structure
 

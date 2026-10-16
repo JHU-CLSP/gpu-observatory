@@ -15,6 +15,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from monitor import routes as monitor_routes
+from monitor.async_utils import finish_before_cancelling
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -142,15 +145,21 @@ async def _background_refresh_loop():
 async def lifespan(app: FastAPI):
     # Kick off initial fetch and background loop on startup
     task = asyncio.create_task(_background_refresh_loop())
-    yield
-    task.cancel()
     try:
-        await task
-    except asyncio.CancelledError:
-        pass
+        await monitor_routes.start_monitor()
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await finish_before_cancelling(monitor_routes.stop_monitor())
 
 
 app = FastAPI(title="GPU Stats API", lifespan=lifespan)
+app.include_router(monitor_routes.router)
 
 app.add_middleware(
     CORSMiddleware,
