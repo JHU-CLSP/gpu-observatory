@@ -20,3 +20,10 @@ frontend/package-lock.json
 # IDE
 .idea/
 .vscode/
+
+# Persistent monitor state and local validation artifacts
+data/
+.pytest_cache/
+.venv-py39/
+artifacts/
+!.env.example

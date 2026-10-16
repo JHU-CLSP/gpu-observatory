@@ -1,0 +1,1268 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Skipjack monitor",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/stats/skipjack/monitor": {
+      "get": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Get Cluster",
+        "operationId": "get_cluster_stats_skipjack_monitor_get",
+        "parameters": [
+          {
+            "name": "user",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterOverview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats/skipjack/monitor/queue-speed": {
+      "get": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Get Queue Speed",
+        "operationId": "get_queue_speed_stats_skipjack_monitor_queue_speed_get",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "24h",
+                "7d",
+                "30d"
+              ],
+              "type": "string",
+              "default": "7d",
+              "title": "Window"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "ours"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Scope"
+            }
+          },
+          {
+            "name": "limited",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "include",
+                "exclude"
+              ],
+              "type": "string",
+              "default": "exclude",
+              "title": "Limited"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueSpeedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats/skipjack/monitor/series": {
+      "get": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Get Series",
+        "operationId": "get_series_stats_skipjack_monitor_series_get",
+        "parameters": [
+          {
+            "name": "metric",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "groups",
+                "pools"
+              ],
+              "type": "string",
+              "default": "groups",
+              "title": "Metric"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "24h",
+                "7d",
+                "30d"
+              ],
+              "type": "string",
+              "default": "7d",
+              "title": "Window"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stats/skipjack/monitor/refresh": {
+      "post": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Refresh Cluster",
+        "operationId": "refresh_cluster_stats_skipjack_monitor_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterRefreshResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccountPendingLoad": {
+        "properties": {
+          "gpus": {
+            "type": "integer",
+            "title": "Gpus"
+          },
+          "jobs": {
+            "type": "integer",
+            "title": "Jobs"
+          },
+          "gpusQueue": {
+            "type": "integer",
+            "title": "Gpusqueue"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gpus",
+          "jobs",
+          "gpusQueue"
+        ],
+        "title": "AccountPendingLoad"
+      },
+      "AccountRunLoad": {
+        "properties": {
+          "gpus": {
+            "type": "integer",
+            "title": "Gpus"
+          },
+          "jobs": {
+            "type": "integer",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gpus",
+          "jobs"
+        ],
+        "title": "AccountRunLoad"
+      },
+      "BackfillProgress": {
+        "properties": {
+          "doneDays": {
+            "type": "integer",
+            "title": "Donedays"
+          },
+          "totalDays": {
+            "type": "integer",
+            "title": "Totaldays"
+          }
+        },
+        "type": "object",
+        "required": [
+          "doneDays",
+          "totalDays"
+        ],
+        "title": "BackfillProgress"
+      },
+      "BudgetView": {
+        "properties": {
+          "unit": {
+            "type": "string",
+            "enum": [
+              "billing-minutes",
+              "GPU-hours"
+            ],
+            "title": "Unit"
+          },
+          "limit": {
+            "type": "number",
+            "title": "Limit"
+          },
+          "used": {
+            "type": "number",
+            "title": "Used"
+          },
+          "committed": {
+            "type": "number",
+            "title": "Committed"
+          },
+          "remaining": {
+            "type": "number",
+            "title": "Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit",
+          "limit",
+          "used",
+          "committed",
+          "remaining"
+        ],
+        "title": "BudgetView"
+      },
+      "ClusterAccountView": {
+        "properties": {
+          "account": {
+            "type": "string",
+            "title": "Account"
+          },
+          "group": {
+            "type": "string",
+            "title": "Group"
+          },
+          "qos": {
+            "type": "string",
+            "title": "Qos"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member"
+          },
+          "users": {
+            "type": "integer",
+            "title": "Users"
+          },
+          "capGpus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Capgpus"
+          },
+          "userCapGpus": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usercapgpus"
+          },
+          "run": {
+            "$ref": "#/components/schemas/AccountRunLoad"
+          },
+          "pend": {
+            "$ref": "#/components/schemas/AccountPendingLoad"
+          },
+          "levelFs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Levelfs"
+          },
+          "levelFsInf": {
+            "type": "boolean",
+            "title": "Levelfsinf"
+          },
+          "userFairshare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userfairshare"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "topUsers": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterUserView"
+            },
+            "type": "array",
+            "title": "Topusers"
+          },
+          "trend": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Trend"
+          },
+          "trendEst": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Trendest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account",
+          "group",
+          "qos",
+          "member",
+          "users",
+          "capGpus",
+          "userCapGpus",
+          "run",
+          "pend",
+          "levelFs",
+          "levelFsInf",
+          "userFairshare",
+          "budget",
+          "topUsers",
+          "trend",
+          "trendEst"
+        ],
+        "title": "ClusterAccountView"
+      },
+      "ClusterGroupView": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "runGpus": {
+            "type": "integer",
+            "title": "Rungpus"
+          },
+          "pendGpus": {
+            "type": "integer",
+            "title": "Pendgpus"
+          },
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterAccountView"
+            },
+            "type": "array",
+            "title": "Accounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "runGpus",
+          "pendGpus",
+          "accounts"
+        ],
+        "title": "ClusterGroupView"
+      },
+      "ClusterLaneView": {
+        "properties": {
+          "partition": {
+            "type": "string",
+            "title": "Partition"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "tier": {
+            "type": "integer",
+            "title": "Tier"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partition",
+          "hidden",
+          "tier"
+        ],
+        "title": "ClusterLaneView"
+      },
+      "ClusterOverview": {
+        "properties": {
+          "availableUsers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Availableusers"
+          },
+          "selectedUser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selecteduser"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ClusterStatusView"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterGroupView"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "pendingOurs": {
+            "items": {
+              "$ref": "#/components/schemas/OurPendingJob"
+            },
+            "type": "array",
+            "title": "Pendingours"
+          },
+          "capacity": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterPoolView"
+            },
+            "type": "array",
+            "title": "Capacity"
+          },
+          "topAccounts": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterTopAccount"
+            },
+            "type": "array",
+            "title": "Topaccounts"
+          },
+          "sampleMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Samplems"
+          },
+          "serverNowMs": {
+            "type": "integer",
+            "title": "Servernowms"
+          },
+          "serverTimezone": {
+            "type": "string",
+            "title": "Servertimezone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "availableUsers",
+          "selectedUser",
+          "status",
+          "groups",
+          "pendingOurs",
+          "capacity",
+          "topAccounts",
+          "sampleMs",
+          "serverNowMs",
+          "serverTimezone"
+        ],
+        "title": "ClusterOverview"
+      },
+      "ClusterPoolView": {
+        "properties": {
+          "pool": {
+            "type": "string",
+            "title": "Pool"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          },
+          "idle": {
+            "type": "integer",
+            "title": "Idle"
+          },
+          "planned": {
+            "type": "integer",
+            "title": "Planned"
+          },
+          "down": {
+            "type": "integer",
+            "title": "Down"
+          },
+          "reserved": {
+            "type": "integer",
+            "title": "Reserved"
+          },
+          "pendGpusQueue": {
+            "type": "integer",
+            "title": "Pendgpusqueue"
+          },
+          "lanes": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterLaneView"
+            },
+            "type": "array",
+            "title": "Lanes"
+          },
+          "preempted24h": {
+            "type": "integer",
+            "title": "Preempted24H"
+          },
+          "preempted7d": {
+            "type": "integer",
+            "title": "Preempted7D"
+          },
+          "preemptedOurs7d": {
+            "type": "integer",
+            "title": "Preemptedours7D"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pool",
+          "total",
+          "used",
+          "idle",
+          "planned",
+          "down",
+          "reserved",
+          "pendGpusQueue",
+          "lanes",
+          "preempted24h",
+          "preempted7d",
+          "preemptedOurs7d"
+        ],
+        "title": "ClusterPoolView"
+      },
+      "ClusterRefreshResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "ClusterRefreshResponse"
+      },
+      "ClusterSeries": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "values"
+        ],
+        "title": "ClusterSeries"
+      },
+      "ClusterStatusView": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "lastTickMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasttickms"
+          },
+          "lastSacctMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsacctms"
+          },
+          "sacctSyncedToMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sacctsyncedtoms"
+          },
+          "backfill": {
+            "$ref": "#/components/schemas/BackfillProgress"
+          },
+          "jobRows": {
+            "type": "integer",
+            "title": "Jobrows"
+          },
+          "dbBytes": {
+            "type": "integer",
+            "title": "Dbbytes"
+          },
+          "accounts": {
+            "type": "integer",
+            "title": "Accounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "available",
+          "locked",
+          "error",
+          "lastTickMs",
+          "lastSacctMs",
+          "sacctSyncedToMs",
+          "backfill",
+          "jobRows",
+          "dbBytes",
+          "accounts"
+        ],
+        "title": "ClusterStatusView"
+      },
+      "ClusterTopAccount": {
+        "properties": {
+          "account": {
+            "type": "string",
+            "title": "Account"
+          },
+          "runGpus": {
+            "type": "integer",
+            "title": "Rungpus"
+          },
+          "pendGpus": {
+            "type": "integer",
+            "title": "Pendgpus"
+          },
+          "ours": {
+            "type": "boolean",
+            "title": "Ours"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account",
+          "runGpus",
+          "pendGpus",
+          "ours"
+        ],
+        "title": "ClusterTopAccount"
+      },
+      "ClusterUserView": {
+        "properties": {
+          "user": {
+            "type": "string",
+            "title": "User"
+          },
+          "runGpus": {
+            "type": "integer",
+            "title": "Rungpus"
+          },
+          "pendGpus": {
+            "type": "integer",
+            "title": "Pendgpus"
+          },
+          "fairshare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fairshare"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "runGpus",
+          "pendGpus",
+          "fairshare"
+        ],
+        "title": "ClusterUserView"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "OurPendingJob": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "account": {
+            "type": "string",
+            "title": "Account"
+          },
+          "user": {
+            "type": "string",
+            "title": "User"
+          },
+          "partitions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partitions"
+          },
+          "gpus": {
+            "type": "integer",
+            "title": "Gpus"
+          },
+          "timeLimitSec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timelimitsec"
+          },
+          "eligibleMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligiblems"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "limited": {
+            "type": "boolean",
+            "title": "Limited"
+          },
+          "estStartMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eststartms"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "account",
+          "user",
+          "partitions",
+          "gpus",
+          "timeLimitSec",
+          "eligibleMs",
+          "reason",
+          "limited",
+          "estStartMs",
+          "priority"
+        ],
+        "title": "OurPendingJob"
+      },
+      "PendingCellView": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "medianAgeSec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianagesec"
+          },
+          "oldestAgeSec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldestagesec"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "medianAgeSec",
+          "oldestAgeSec"
+        ],
+        "title": "PendingCellView"
+      },
+      "QueueSpeedResponse": {
+        "properties": {
+          "window": {
+            "type": "string",
+            "enum": [
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "title": "Window"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "all",
+              "ours"
+            ],
+            "title": "Scope"
+          },
+          "includeLimited": {
+            "type": "boolean",
+            "title": "Includelimited"
+          },
+          "partitions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partitions"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/QueueSpeedRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "generatedAtMs": {
+            "type": "integer",
+            "title": "Generatedatms"
+          },
+          "sacctSyncedToMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sacctsyncedtoms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window",
+          "scope",
+          "includeLimited",
+          "partitions",
+          "rows",
+          "generatedAtMs",
+          "sacctSyncedToMs"
+        ],
+        "title": "QueueSpeedResponse"
+      },
+      "QueueSpeedRow": {
+        "properties": {
+          "partition": {
+            "type": "string",
+            "title": "Partition"
+          },
+          "gpuClass": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3-4",
+              "5-8",
+              "9+"
+            ],
+            "title": "Gpuclass"
+          },
+          "tl": {
+            "type": "string",
+            "enum": [
+              "1h",
+              "4h",
+              "12h",
+              "24h",
+              "long"
+            ],
+            "title": "Tl"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events"
+          },
+          "censored": {
+            "type": "integer",
+            "title": "Censored"
+          },
+          "p50Sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P50Sec"
+          },
+          "p90Sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90Sec"
+          },
+          "atLeastSec": {
+            "type": "number",
+            "title": "Atleastsec"
+          },
+          "immediateFrac": {
+            "type": "number",
+            "title": "Immediatefrac"
+          },
+          "pendingNow": {
+            "$ref": "#/components/schemas/PendingCellView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partition",
+          "gpuClass",
+          "tl",
+          "n",
+          "events",
+          "censored",
+          "p50Sec",
+          "p90Sec",
+          "atLeastSec",
+          "immediateFrac",
+          "pendingNow"
+        ],
+        "title": "QueueSpeedRow"
+      },
+      "SeriesResponse": {
+        "properties": {
+          "metric": {
+            "type": "string",
+            "enum": [
+              "groups",
+              "pools"
+            ],
+            "title": "Metric"
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "title": "Window"
+          },
+          "stepSec": {
+            "type": "integer",
+            "title": "Stepsec"
+          },
+          "t": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "T"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/ClusterSeries"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Totals"
+          },
+          "estimated": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Estimated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric",
+          "window",
+          "stepSec",
+          "t",
+          "series",
+          "totals",
+          "estimated"
+        ],
+        "title": "SeriesResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

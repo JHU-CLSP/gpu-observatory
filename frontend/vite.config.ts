@@ -3,13 +3,16 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
+const base = '/' + (process.env.VITE_BASE_PATH ?? '/port5000/').replace(/^\/+|\/+$/g, '')
+const prefix = base === '/' ? '' : base
+
 export default defineConfig({
-  base: '/port5000/',
+  base: `${prefix}/`,
   server: {
     proxy: {
-      '/port5000/stats': {
+      [`${prefix}/stats`]: {
         target: 'http://localhost:8000',
-        rewrite: (path) => path.replace(/^\/port5000/, ''),
+        rewrite: (path) => path.slice(prefix.length),
       },
     },
   },

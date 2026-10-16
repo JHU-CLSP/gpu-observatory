@@ -1,3 +1,5 @@
+import { ClusterApp } from "./monitor/ClusterApp";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { useState, useEffect } from "react";
 import { SkipjackServerCard } from "./components/SkipjackServerCard";
 import { SkipjackAccountUsageChart } from "./components/SkipjackAccountUsageChart";
@@ -38,6 +40,14 @@ const WAIT_SORT_DEFAULT_DIR: Record<WaitSortColumn, "asc" | "desc"> = {
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const [tab, setTab] = useState(() => {
+    try { return localStorage.getItem('observatory.tab') === 'skipjack' ? 'skipjack' : 'overview'; }
+    catch { return 'overview'; }
+  });
+  const selectTab = (value: string) => {
+    setTab(value);
+    try { localStorage.setItem('observatory.tab', value); } catch { /* private browsing */ }
+  };
   const [skipjackStats, setSkipjackStats] = useState<SkipjackStats | null>(null);
   const [ia1Stats, setIa1Stats] = useState<IA1Stats | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
@@ -71,11 +81,16 @@ export default function App() {
   );
 
   const fetchStats = async () => {
+    const read = async (path: string) => {
+      const response = await fetch(`${API_BASE}${path}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    };
     try {
       const [skipjack, ia1, history] = await Promise.all([
-        fetch(`${API_BASE}/stats/skipjack`).then(r => r.json()),
-        fetch(`${API_BASE}/stats/ia1`).then(r => r.json()),
-        fetch(`${API_BASE}/stats/history`).then(r => r.json()),
+        read("/stats/skipjack"),
+        read("/stats/ia1"),
+        read("/stats/history"),
       ]);
 
       if (skipjack.error) { setSkipjackError(skipjack.error); setSkipjackStats(null); }
@@ -102,43 +117,22 @@ export default function App() {
     }
   };
 
-  // Initial load
   useEffect(() => {
-    fetchStats();
-  }, []);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
+    if (tab !== 'overview') return;
+    void fetchStats();
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tab]);
 
-  // Only block the full page on initial load (nothing yet) or backend unreachable
+  // Overview failures stay within its tab; the detailed monitor remains accessible.
   const nothingLoaded = !skipjackStats && !ia1Stats
     && !skipjackError && !ia1Error;
-  if (fetchError || nothingLoaded) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          {fetchError ? (
-            <p className="text-red-500 font-medium mb-2">{fetchError}</p>
-          ) : (
-            <>
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-              <p className="text-muted-foreground">Loading GPU stats...</p>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
             <div className="flex items-center gap-3">
               <Activity className="h-8 w-8 text-blue-600" />
               <div>
@@ -149,7 +143,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-right">
+              <div className="text-right" hidden={tab !== 'overview'}>
                 <div className="text-xs text-muted-foreground">Last updated</div>
                 <div className="text-sm font-medium">
                   {lastUpdate.toLocaleTimeString()}
@@ -157,6 +151,7 @@ export default function App() {
               </div>
               <Button
                 onClick={refreshData}
+                hidden={tab !== 'overview'}
                 disabled={isRefreshing}
                 variant="outline"
                 size="sm"
@@ -171,6 +166,15 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={tab} onValueChange={selectTab}>
+          <TabsList aria-label="Dashboard view" className="mb-6">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="skipjack">Skipjack details</TabsTrigger>
+          </TabsList>
+          <TabsContent value="skipjack"><ClusterApp /></TabsContent>
+          <TabsContent value="overview">
+            {fetchError && <p role="alert" className="mb-4 text-red-500">{fetchError}</p>}
+            {nothingLoaded && <p role="status" className="mb-4 text-muted-foreground">Loading GPU stats…</p>}
         {/* Summary Stats — active GPU counts, shown first for a quick overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
@@ -426,6 +430,8 @@ export default function App() {
             Backend: {API_BASE}
           </p>
         </footer>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
