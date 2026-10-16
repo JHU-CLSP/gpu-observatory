@@ -72,6 +72,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stats/skipjack/monitor/start-estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Start Estimates */
+        get: operations["get_start_estimates_stats_skipjack_monitor_start_estimates_get"];
+        put?: never;
+        /** Probe Start Estimates */
+        post: operations["probe_start_estimates_stats_skipjack_monitor_start_estimates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -391,6 +409,65 @@ export interface components {
             /** Estimated */
             estimated: boolean[];
         };
+        /** StartEstimateRow */
+        StartEstimateRow: {
+            /** Gpus */
+            gpus: number;
+            /** Timelimitminutes */
+            timeLimitMinutes: number;
+            /** Cpus */
+            cpus: number;
+            /** Memorygib */
+            memoryGib: number;
+            /** Checkedatms */
+            checkedAtMs: number;
+            /** Estimatedstartms */
+            estimatedStartMs: number | null;
+            /** Waitsec */
+            waitSec: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "estimated" | "unavailable" | "error";
+            /** Output */
+            output: string;
+            /** Exitcode */
+            exitCode: number;
+        };
+        /** StartEstimatesResponse */
+        StartEstimatesResponse: {
+            /** Available */
+            available: boolean;
+            /** Error */
+            error: string | null;
+            /** Probeuser */
+            probeUser: string | null;
+            /** Accounts */
+            accounts: string[];
+            /** Partitions */
+            partitions: string[];
+            /** Account */
+            account: string | null;
+            /** Partition */
+            partition: string | null;
+            /** Cpuspergpu */
+            cpusPerGpu: number;
+            /** Memorygibpergpu */
+            memoryGibPerGpu: number;
+            /** Cacheseconds */
+            cacheSeconds: number;
+            /** Checkedatms */
+            checkedAtMs: number | null;
+            /** Timelimitsminutes */
+            timeLimitsMinutes: number[];
+            /** Nexttimelimitsminutes */
+            nextTimeLimitsMinutes: number[];
+            /** Rows */
+            rows: components["schemas"]["StartEstimateRow"][];
+            /** Probing */
+            probing: boolean;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -525,6 +602,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClusterRefreshResponse"];
+                };
+            };
+        };
+    };
+    get_start_estimates_stats_skipjack_monitor_start_estimates_get: {
+        parameters: {
+            query?: {
+                account?: string | null;
+                partition?: string | null;
+                cpus_per_gpu?: number;
+                memory_gib_per_gpu?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartEstimatesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probe_start_estimates_stats_skipjack_monitor_start_estimates_post: {
+        parameters: {
+            query?: {
+                account?: string | null;
+                partition?: string | null;
+                cpus_per_gpu?: number;
+                memory_gib_per_gpu?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartEstimatesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

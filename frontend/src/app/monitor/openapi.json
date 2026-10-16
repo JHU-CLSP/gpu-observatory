@@ -212,6 +212,182 @@
           }
         }
       }
+    },
+    "/stats/skipjack/monitor/start-estimates": {
+      "get": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Get Start Estimates",
+        "operationId": "get_start_estimates_stats_skipjack_monitor_start_estimates_get",
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          },
+          {
+            "name": "partition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partition"
+            }
+          },
+          {
+            "name": "cpus_per_gpu",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 32,
+              "minimum": 1,
+              "default": 8,
+              "title": "Cpus Per Gpu"
+            }
+          },
+          {
+            "name": "memory_gib_per_gpu",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 256,
+              "minimum": 1,
+              "default": 64,
+              "title": "Memory Gib Per Gpu"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartEstimatesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cluster"
+        ],
+        "summary": "Probe Start Estimates",
+        "operationId": "probe_start_estimates_stats_skipjack_monitor_start_estimates_post",
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          },
+          {
+            "name": "partition",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partition"
+            }
+          },
+          {
+            "name": "cpus_per_gpu",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 32,
+              "minimum": 1,
+              "default": 8,
+              "title": "Cpus Per Gpu"
+            }
+          },
+          {
+            "name": "memory_gib_per_gpu",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 256,
+              "minimum": 1,
+              "default": 64,
+              "title": "Memory Gib Per Gpu"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartEstimatesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1222,6 +1398,216 @@
           "estimated"
         ],
         "title": "SeriesResponse"
+      },
+      "StartEstimateRow": {
+        "properties": {
+          "gpus": {
+            "type": "integer",
+            "title": "Gpus"
+          },
+          "timeLimitMinutes": {
+            "type": "integer",
+            "title": "Timelimitminutes"
+          },
+          "cpus": {
+            "type": "integer",
+            "title": "Cpus"
+          },
+          "memoryGib": {
+            "type": "integer",
+            "title": "Memorygib"
+          },
+          "checkedAtMs": {
+            "type": "integer",
+            "title": "Checkedatms"
+          },
+          "estimatedStartMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimatedstartms"
+          },
+          "waitSec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waitsec"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "estimated",
+              "unavailable",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "output": {
+            "type": "string",
+            "title": "Output"
+          },
+          "exitCode": {
+            "type": "integer",
+            "title": "Exitcode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gpus",
+          "timeLimitMinutes",
+          "cpus",
+          "memoryGib",
+          "checkedAtMs",
+          "estimatedStartMs",
+          "waitSec",
+          "status",
+          "output",
+          "exitCode"
+        ],
+        "title": "StartEstimateRow"
+      },
+      "StartEstimatesResponse": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "probeUser": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Probeuser"
+          },
+          "accounts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Accounts"
+          },
+          "partitions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Partitions"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
+          "partition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partition"
+          },
+          "cpusPerGpu": {
+            "type": "integer",
+            "title": "Cpuspergpu"
+          },
+          "memoryGibPerGpu": {
+            "type": "integer",
+            "title": "Memorygibpergpu"
+          },
+          "cacheSeconds": {
+            "type": "integer",
+            "title": "Cacheseconds"
+          },
+          "checkedAtMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkedatms"
+          },
+          "timeLimitsMinutes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Timelimitsminutes"
+          },
+          "nextTimeLimitsMinutes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Nexttimelimitsminutes"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/StartEstimateRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "probing": {
+            "type": "boolean",
+            "title": "Probing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "error",
+          "probeUser",
+          "accounts",
+          "partitions",
+          "account",
+          "partition",
+          "cpusPerGpu",
+          "memoryGibPerGpu",
+          "cacheSeconds",
+          "checkedAtMs",
+          "timeLimitsMinutes",
+          "nextTimeLimitsMinutes",
+          "rows",
+          "probing"
+        ],
+        "title": "StartEstimatesResponse"
       },
       "ValidationError": {
         "properties": {

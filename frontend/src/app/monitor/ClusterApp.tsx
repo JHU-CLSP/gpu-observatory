@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { ClusterApiError, clusterApi } from './api'
 import { SPEED_WINDOWS, type ClusterOverview, type QueueSpeedResponse, type SeriesResponse, type SpeedScope, type SpeedWindow } from './types'
 import { AccountsPanel } from './AccountsPanel'
 import { CapacityPanel } from './CapacityPanel'
 import { QueueSpeedPanel } from './QueueSpeedPanel'
+import { StartEstimatesPanel } from './StartEstimatesPanel'
 import { TrendsPanel } from './TrendsPanel'
 import { PendingPanel } from './PendingPanel'
 import { TopAccountsPanel } from './TopAccountsPanel'
+import { ApiHelp } from './ApiHelp'
+import { useHoverTip } from './charts/HoverTip'
 import { fmtBytes, relTime } from './format'
 import './cluster.css'
+
+const USER_PERSPECTIVE_HELP = 'Choose a user to see their account membership, per-user GPU caps, and FairShare. Account totals shows the account-wide view. GPU totals and queue-speed samples still include other users.'
 
 function useSavedChoice<T extends string>(key: string, initial: T, valid: readonly T[]): [T, (value: T) => void] {
   const [value, setValue] = useState<T>(() => {
@@ -25,6 +30,8 @@ function useSavedChoice<T extends string>(key: string, initial: T, valid: readon
 }
 
 export function ClusterApp() {
+  const { bind, node } = useHoverTip()
+  const userHelpId = useId()
   const [win, setWin] = useSavedChoice('observatory.monitor.window', '7d' as SpeedWindow, SPEED_WINDOWS)
   const [scope, setScope] = useSavedChoice('observatory.monitor.scope', 'all' as SpeedScope, ['all', 'ours'])
   const [user, setUser] = useState(() => {
@@ -36,7 +43,7 @@ export function ClusterApp() {
     setUser(value)
     try { localStorage.setItem('observatory.monitor.user', value) } catch { /* private browsing */ }
   }
-  const [limited, setLimited] = useState(false)
+  const [limited, setLimited] = useState(true)
   const [now, setNow] = useState(Date.now)
   const [ov, setOv] = useState<ClusterOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -119,13 +126,14 @@ export function ClusterApp() {
       <span className="seg" role="group" aria-label="Time window">
         {SPEED_WINDOWS.map(w => <button key={w} className={win === w ? 'on' : ''} aria-pressed={win === w} onClick={() => setWin(w)}>{w}</button>)}
       </span>
-      <label className="user-picker">User perspective
-        <select value={user} onChange={event => chooseUser(event.target.value)} aria-label="User perspective">
+      <label className="user-picker" {...bind(USER_PERSPECTIVE_HELP)}>User perspective
+        <select value={user} onChange={event => chooseUser(event.target.value)} aria-label="User perspective" aria-describedby={userHelpId}>
           <option value="">Account totals</option>
           {user && !ov?.availableUsers.includes(user) && <option value={user}>{user}</option>}
           {ov?.availableUsers.map(name => <option key={name} value={name}>{name}</option>)}
         </select>
       </label>
+      <span id={userHelpId} className="sr-only">{USER_PERSPECTIVE_HELP}</span>
       <span className="grow" />
       {status && <span className="muted small" title={`${status.jobRows.toLocaleString()} job records · ${fmtBytes(status.dbBytes)}`}>
         queue {relTime(ov?.sampleMs, now)} · history {relTime(status.sacctSyncedToMs, now)}
@@ -144,10 +152,13 @@ export function ClusterApp() {
       {!shownOverview && <p role="status">Loading user perspective…</p>}
       {shownOverview && shownOverview.groups.length === 0 && <p className="muted">No tracked account associations have been collected yet.</p>}
       <QueueSpeedPanel speed={shownSpeed} loading={loading} win={win} now={now} scope={scope} setScope={setScope} limited={limited} setLimited={setLimited} />
+      <StartEstimatesPanel now={now} tz={tz} />
       <CapacityPanel capacity={ov.capacity} pools={shownPools} win={win} tz={tz} />
       <TrendsPanel series={shownGroups} groupNames={ov.groups.map(g => g.name)} win={win} tz={tz} />
       <PendingPanel jobs={ov.pendingOurs} now={now} />
       <TopAccountsPanel top={ov.topAccounts} />
     </div>}
+    <ApiHelp />
+    {node}
   </section>
 }

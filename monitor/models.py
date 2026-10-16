@@ -189,3 +189,34 @@ class SeriesResponse(ClusterModel):
 
 class ClusterRefreshResponse(ClusterModel):
     ok: bool
+
+
+class StartEstimateRow(ClusterModel):
+    gpus: int
+    time_limit_minutes: int
+    cpus: int
+    memory_gib: int
+    checked_at_ms: int
+    estimated_start_ms: Optional[int]
+    wait_sec: Optional[float]
+    status: Literal["estimated", "unavailable", "error"]
+    output: str
+    exit_code: int
+
+
+class StartEstimatesResponse(ClusterModel):
+    available: bool
+    error: Optional[str]
+    probe_user: Optional[str]
+    accounts: list[str]
+    partitions: list[str]
+    account: Optional[str]
+    partition: Optional[str]
+    cpus_per_gpu: int
+    memory_gib_per_gpu: int
+    cache_seconds: int
+    checked_at_ms: Optional[int]
+    time_limits_minutes: list[int]
+    next_time_limits_minutes: list[int]
+    rows: list[StartEstimateRow]
+    probing: bool

@@ -108,14 +108,54 @@ freshness/error notices identify that condition.
 Shared physical nodes count once per pool, including condo aliases. Queue waits
 start at eligibility. Arrays and short submission bursts contribute one
 observation; pending and cancelled jobs are censored observations. Requeued
-attempts and reservations are excluded. Limits/holds are excluded unless enabled
-in the filter. These statistics intentionally differ from the original overview's
+attempts and reservations are excluded. Limits/holds are included by default in
+the dashboard; uncheck the filter to exclude them. These statistics intentionally differ from the original overview's
 submission-to-start averages over individual started jobs.
 
 History views cover 24 hours, 7 days, and 30 days. Missing samples remain gaps;
 account trends reconstructed from accounting are marked estimated/dashed and
 never replace observed samples. Reconstructed pool states borrow the nearest observed capacity snapshot;
 historical availability cannot be recovered from accounting alone.
+
+### Scheduler start estimates
+
+The separate **Scheduler start estimates** table compares 18 concrete requests:
+1, 4, and 8 GPUs, each with a 1, 4, 12, 24, 48, or 72-hour limit. Choose an account
+and partition, then select **Probe now**. Requests use one node, one task, the
+account's default QoS, and initially 8 CPUs and 64 GiB per GPU. The CPU and memory
+selectors change those assumptions without sending tests. Only **Probe now** (or
+an explicit API POST) requests tests; there are no automatic probe timers.
+Every row shows the exact resources, estimate,
+wait at probe time, timestamp, and expandable Slurm output. Rejected requests and
+missing estimates have no wait value. Site CLI warnings remain visible in the output.
+
+This uses [`sbatch --test-only`](https://slurm.schedmd.com/sbatch.html#OPT_test-only):
+no job is submitted. It is the scheduler's current estimate, not an observed or
+guaranteed start time. The probes run as the local server user or SSH login user,
+which is shown above the table. **User perspective** does not impersonate that
+user. Only underscore-suffixed tracked subaccounts with a cached association for
+the probe identity can be selected; parent accounts are excluded. The default QoS,
+fairshare, resource sizes, and queue state all matter.
+
+`sbatch` is optional; missing test-mode support leaves the other monitor panels
+available. Local and SSH execution both construct fixed argument lists and always
+include `--test-only`; arbitrary scripts, Slurm options, and user impersonation
+are not accepted. Environment-provided Slurm submission options are removed.
+
+Each new batch checks half the table: 1/12/48-hour limits first, then 4/24/72-hour
+limits, alternating independently for each account/partition/CPU/memory selection.
+The other half's results and original timestamps are retained. Unchecked rows show
+**Not probed yet**; results at least 15 minutes old are marked stale. The next
+batch's limits and remaining cache interval are shown above the table.
+
+Results and the next batch are shared across browsers and persisted in SQLite.
+For the same settings, a POST within 15 minutes of the last batch reuses cached
+results without advancing the batch. The visible details tab reads this cache
+every minute; these GETs never invoke Slurm. A new batch has nine sequential calls
+spaced one second apart, with a maximum 20-second Slurm command
+timeout per call. Only one batch runs at a time and at most one new batch starts
+per minute. Concurrent identical requests join the same batch; the cache retains
+the latest 32 selections. Closing a browser request does not cancel shared work.
 
 ## API
 
@@ -127,6 +167,8 @@ All paths below start with `/stats/skipjack/monitor`:
 | `GET /queue-speed` | `window=24h\|7d\|30d`, `scope=all\|ours`, `limited=exclude\|include`. `ours` means configured tracked accounts. |
 | `GET /series` | `metric=groups\|pools`, `window=24h\|7d\|30d`. |
 | `POST /refresh` | Joins an in-flight collection; otherwise permits one manual refresh per minute. |
+| `GET /start-estimates` | Reads cached estimates, available probe accounts/partitions, all `timeLimitsMinutes`, and `nextTimeLimitsMinutes`. Optional `account`, `partition`, `cpus_per_gpu` (1–32, default 8), `memory_gib_per_gpu` (1–256, default 64). Defaults select the first available account and partition. |
+| `POST /start-estimates` | Same query parameters; returns cached results or runs the next nine test-only requests, preserving the other half. Batches for the same settings are at least 15 minutes apart, with a global one-minute batch throttle. |
 
 Invalid queries return 422. Refresh returns 503 if unavailable and 429 with
 `Retry-After: 60` when throttled. GETs read cached data and do not invoke Slurm.

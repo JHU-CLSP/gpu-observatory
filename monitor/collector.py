@@ -18,6 +18,7 @@ from .transport import SlurmTransport
 from .parse import account_load, parse_associations, parse_jobs, parse_nodes, parse_partitions, parse_qos, parse_queue, parse_shares, pool_capacity
 from .reconstruct import fill_gaps
 from .store import ClusterDbLocked, ClusterStore
+from .probes import StartProbes
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +67,7 @@ class ClusterMonitor:
         self._tick_task = None
         self._backfill_task = None
         self._stopping = False
+        self.probes = StartProbes(self)
 
     async def start(self):
         if not self.config.enabled:
@@ -94,6 +96,7 @@ class ClusterMonitor:
 
     async def stop(self):
         self._stopping = True
+        await self.probes.stop()
         tasks = [t for t in (self._loop_task, self._tick_task, self._backfill_task) if t is not None]
         for task in tasks:
             task.cancel()

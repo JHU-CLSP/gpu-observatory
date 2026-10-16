@@ -52,7 +52,11 @@ beforeEach(() => {
       })),
     })) }
     let status = 200
-    if (url.pathname.endsWith('/queue-speed')) {
+    if (url.pathname.endsWith('/start-estimates')) {
+      data = { available: false, error: null, probeUser: 'viewer', accounts: [], partitions: [], account: null, partition: null,
+        timeLimitsMinutes: [60, 240, 720, 1440, 2880, 4320], nextTimeLimitsMinutes: [60, 720, 2880],
+        cpusPerGpu: 8, memoryGibPerGpu: 64, cacheSeconds: 900, checkedAtMs: null, rows: [], probing: false }
+    } else if (url.pathname.endsWith('/queue-speed')) {
       data = { window: url.searchParams.get('window'), scope: url.searchParams.get('scope'),
         includeLimited: url.searchParams.get('limited') === 'include', partitions: ['a100'], rows: [{
           partition: 'a100', gpuClass: '1', tl: '1h', n: 10, events: 10, censored: 0, p50Sec: 300, p90Sec: 540,
@@ -107,12 +111,12 @@ describe('standalone cluster monitor', () => {
     await mount()
     await click('24h')
     await click('Tracked accounts')
-    expect(requests).toContain('/stats/skipjack/monitor/queue-speed?window=24h&scope=ours&limited=exclude')
+    expect(requests).toContain('/stats/skipjack/monitor/queue-speed?window=24h&scope=ours&limited=include')
     expect(localStorage.getItem('observatory.monitor.window')).toBe('24h')
     expect(localStorage.getItem('observatory.monitor.scope')).toBe('ours')
     const checkbox = host.querySelector<HTMLInputElement>('input[type="checkbox"]')!
     await act(async () => checkbox.click())
-    expect(requests).toContain('/stats/skipjack/monitor/queue-speed?window=24h&scope=ours&limited=include')
+    expect(requests).toContain('/stats/skipjack/monitor/queue-speed?window=24h&scope=ours&limited=exclude')
   })
 
   it('retains successful data when polling fails and recovers on retry', async () => {

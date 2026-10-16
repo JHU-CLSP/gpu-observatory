@@ -8,6 +8,7 @@ export type ClusterPoolView = components['schemas']['ClusterPoolView']
 export type QueueSpeedResponse = components['schemas']['QueueSpeedResponse']
 export type QueueSpeedRow = components['schemas']['QueueSpeedRow']
 export type SeriesResponse = components['schemas']['SeriesResponse']
+export type StartEstimatesResponse = components['schemas']['StartEstimatesResponse']
 export type SpeedWindow = QueueSpeedResponse['window']
 export type SpeedScope = QueueSpeedResponse['scope']
 

@@ -1,9 +1,13 @@
+import { useId } from 'react';
 import { GPU_CLASSES, TL_BUCKETS, type QueueSpeedResponse, type QueueSpeedRow, type SpeedScope, type SpeedWindow } from './types';
 import { useHoverTip } from './charts/HoverTip';
 import { fmtQuantile, fmtWait, waitBin, WAIT_BINS } from './format';
 import { relTime } from './format';
 
 const THIN = 5;
+const ALL_USERS_HELP = 'Compare queue waits across all accounts visible to this monitor, including accounts outside the tracked groups. The user perspective selection does not filter this sample.';
+const TRACKED_ACCOUNTS_HELP = 'Show queue waits only for the accounts listed in the Accounts section, including jobs from all users in those accounts.';
+const LIMITED_WAITS_HELP = 'Include jobs delayed by account or QoS limits, holds, or other scheduling restrictions. Leave unchecked to focus on ordinary queue waits. Time spent waiting on dependencies is excluded either way.';
 
 /**
  * "How long does a job of this shape wait here?" — rows partition × GPU class, columns time-limit
@@ -16,6 +20,7 @@ export function QueueSpeedPanel({ speed, loading, win, scope, setScope, limited,
   scope: SpeedScope; setScope: (s: SpeedScope) => void; limited: boolean; setLimited: (v: boolean) => void;
 }) {
   const { bind, node } = useHoverTip();
+  const helpId = useId();
   const rows = speed?.rows ?? [];
   const byKey = new Map(rows.map((r) => [`${r.partition}|${r.gpuClass}|${r.tl}`, r]));
   // Only partitions our accounts can submit to; sacct also sees jobs on the rest (b200, …).
@@ -28,12 +33,15 @@ export function QueueSpeedPanel({ speed, loading, win, scope, setScope, limited,
       <div className="panel-head">
         <h2>Queue speed by request size</h2>
         <span className="seg" role="group" aria-label="whose jobs">
-          <button className={scope === 'all' ? 'on' : ''} aria-pressed={scope === 'all'} onClick={() => setScope('all')}>All users</button>
-          <button className={scope === 'ours' ? 'on' : ''} aria-pressed={scope === 'ours'} onClick={() => setScope('ours')}>Tracked accounts</button>
+          <button className={scope === 'all' ? 'on' : ''} aria-pressed={scope === 'all'} aria-describedby={`${helpId}-all`} onClick={() => setScope('all')} {...bind(ALL_USERS_HELP)}>All users</button>
+          <button className={scope === 'ours' ? 'on' : ''} aria-pressed={scope === 'ours'} aria-describedby={`${helpId}-ours`} onClick={() => setScope('ours')} {...bind(TRACKED_ACCOUNTS_HELP)}>Tracked accounts</button>
         </span>
-        <label className="small muted"><input type="checkbox" checked={limited} onChange={(e) => setLimited(e.target.checked)} /> include limit-/hold-bound waits</label>
+        <label className="small muted" {...bind(LIMITED_WAITS_HELP)}><input type="checkbox" checked={limited} aria-describedby={`${helpId}-limited`} onChange={(e) => setLimited(e.target.checked)} /> include limit-/hold-bound waits</label>
         <span className="muted small">last {win}{speed?.sacctSyncedToMs ? ` · history synced ${relTime(speed.sacctSyncedToMs, now)}` : ''}</span>
       </div>
+      <span id={`${helpId}-all`} className="sr-only">{ALL_USERS_HELP}</span>
+      <span id={`${helpId}-ours`} className="sr-only">{TRACKED_ACCOUNTS_HELP}</span>
+      <span id={`${helpId}-limited`} className="sr-only">{LIMITED_WAITS_HELP}</span>
       <div className="row small" style={{ marginBottom: 6 }}>
         <span className="muted">median wait:</span>
         <span className="heat-scale">{WAIT_BINS.map((b, i) => <span key={b.label} className={`heat-key b${i}`}>{b.label}</span>)}</span>

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 import os
+import re
 import signal
 
 from .parse import SEP
@@ -16,6 +17,17 @@ SHARE_FIELDS = "Account,User,RawShares,NormShares,RawUsage,EffectvUsage,FairShar
 ASSOC_ARGS = ["-nP", "show", "assoc", "format=Account,ParentName,User,QOS,GrpTRES,GrpTRESMins"]
 PARTITION_ARGS = ["-a", "-o", "show", "partition"]
 REQUIRED_COMMANDS = ("squeue", "sinfo", "sshare", "sacct", "sacctmgr", "scontrol")
+PROBE_TIME_LIMITS = (60, 240, 720, 1440, 2880, 4320)
+
+
+def probe_args(account: str, partition: str, gpus: int, minutes: int, cpus: int, memory_gib: int) -> list[str]:
+    """Fixed single-node test request. No user-supplied scripts or Slurm options."""
+    if not all(re.fullmatch(r"[\w.-]+", name) for name in (account, partition)):
+        raise ValueError("Invalid account or partition")
+    if gpus not in (1, 4, 8) or minutes not in PROBE_TIME_LIMITS or not 1 <= cpus <= 256 or not 1 <= memory_gib <= 2048:
+        raise ValueError("Unsupported probe size")
+    return [f"--account={account}", f"--partition={partition}", "--nodes=1", "--ntasks=1",
+            f"--gres=gpu:{gpus}", f"--cpus-per-task={cpus}", f"--mem={memory_gib}G", f"--time={minutes}"]
 
 
 def command_env() -> dict[str, str]:
