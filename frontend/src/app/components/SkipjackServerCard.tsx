@@ -85,6 +85,17 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
     });
   };
 
+  // Hooks must run before the early return below, or React crashes (#310)
+  // when stats go from unavailable to loaded.
+  const sortedPendingJobs = useMemo(
+    () =>
+      [...(stats?.pending_jobs ?? [])].sort((a, b) => {
+        const cmp = compareQueueField(a, b, queueSort.field);
+        return queueSort.dir === "asc" ? cmp : -cmp;
+      }),
+    [stats?.pending_jobs, queueSort]
+  );
+
   if (!stats) {
     return (
       <Card className="w-full">
@@ -137,15 +148,6 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
         (b.running?.total ?? 0) - (a.running?.total ?? 0) ||
         (b.pending?.gpus ?? 0) - (a.pending?.gpus ?? 0)
     );
-
-  const sortedPendingJobs = useMemo(
-    () =>
-      [...stats.pending_jobs].sort((a, b) => {
-        const cmp = compareQueueField(a, b, queueSort.field);
-        return queueSort.dir === "asc" ? cmp : -cmp;
-      }),
-    [stats.pending_jobs, queueSort]
-  );
 
   return (
     <Card className="w-full">
