@@ -281,7 +281,7 @@ export interface IA1IdleGPU {
 
 export interface IA1Stats {
   timestamp: string;
-  server: "ia1";
+  server: "ia1" | "ia2";
   summary: {
     total_gpus: number;
     allocated_gpus: number;
@@ -298,6 +298,7 @@ export interface IA1Stats {
   pending_summary: PendingSummary;
   scratch_space_total_tb: number;
   scratch_space_used_tb: number;
+  scratch_path?: string;
 }
 
 export interface HistoricalDataPoint {
@@ -316,4 +317,8 @@ export interface HistoricalDataPoint {
   ia1_active: number;
   ia1_allocated: number;
   ia1_pending_gpus: number;
+  // Absent on points recorded before IA2 was added; null when IA2 was unavailable.
+  ia2_active?: number | null;
+  ia2_allocated?: number | null;
+  ia2_pending_gpus?: number | null;
 }

@@ -17,6 +17,7 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
           { title: "Skipjack Cluster - GPU Usage Over Time", color: "text-indigo-600" },
           { title: "Skipjack Queue Speed Over Time", color: "text-indigo-600" },
           { title: "IA1 Node - GPU Usage Over Time", color: "text-green-600" },
+          { title: "IA2 Node - GPU Usage Over Time", color: "text-teal-600" },
         ].map(({ title, color }) => (
           <Card key={title} className="w-full">
             <CardHeader>
@@ -66,6 +67,13 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
     "Active": point.ia1_active,
     "Allocated": point.ia1_allocated,
     "Pending": point.ia1_pending_gpus,
+  }));
+
+  const ia2Data = data.map((point) => ({
+    time: formatTime(point.timestamp),
+    "Active": point.ia2_active ?? null,
+    "Allocated": point.ia2_allocated ?? null,
+    "Pending": point.ia2_pending_gpus ?? null,
   }));
 
   return (
@@ -219,6 +227,64 @@ export function HistoricalChart({ data }: HistoricalChartProps) {
                 type="monotone"
                 dataKey="Allocated"
                 stroke="#6ee7b7"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Pending"
+                stroke="#a78bfa"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* IA2 Chart */}
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-teal-600" />
+            <CardTitle>IA2 Node - GPU Usage Over Time</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={ia2Data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="time" 
+                tick={{ fontSize: 12 }}
+                interval="preserveStartEnd"
+              />
+              <YAxis 
+                label={{ value: "GPU Count", angle: -90, position: "insideLeft" }}
+                tick={{ fontSize: 12 }}
+                domain={[0, 8]}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                  border: "1px solid #ccc",
+                  borderRadius: "8px"
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="Active"
+                stroke="#14b8a6"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="Allocated"
+                stroke="#5eead4"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}

@@ -50,6 +50,7 @@ const overviewEndpoints: Endpoint[] = [
   { path: '/stats/skipjack', description: 'Skipjack server data from the Overview collector.' },
   { path: '/stats/dsai', description: 'DSAI server data from the Overview collector.' },
   { path: '/stats/ia1', description: 'IA1 server data from the Overview collector.' },
+  { path: '/stats/ia2', description: 'IA2 server data from the Overview collector.' },
   { path: '/stats', description: 'Overview data for all servers in one response.' },
   { path: '/stats/history', description: 'Overview history collected since this server started.' },
 ]

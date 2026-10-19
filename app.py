@@ -30,10 +30,11 @@ from fastapi.responses import FileResponse
 CACHE_TTL_SECONDS = 30 * 60  # 30 minutes
 HISTORY_MAX_POINTS = 500    # ~10 days at 30-min intervals
 
-SCRIPTS: dict[str, Path] = {
-    "skipjack": Path(__file__).parent / "danielgpus_skipjack.py",
-    "dsai": Path(__file__).parent / "danielgpus_dsai.py",
-    "ia1": Path(__file__).parent / "danielgpus_ia1.py",
+SCRIPTS: dict[str, list[str]] = {
+    "skipjack": [str(Path(__file__).parent / "danielgpus_skipjack.py")],
+    "dsai": [str(Path(__file__).parent / "danielgpus_dsai.py")],
+    "ia1": [str(Path(__file__).parent / "danielgpus_ia1.py"), "ia1"],
+    "ia2": [str(Path(__file__).parent / "danielgpus_ia1.py"), "ia2"],
 }
 
 # ---------------------------------------------------------------------------
@@ -51,10 +52,13 @@ _history: deque[dict] = deque(maxlen=HISTORY_MAX_POINTS)
 
 def _snapshot_to_history_point() -> dict | None:
     """Build a HistoricalDataPoint from the current cache. Returns None if any
-    server is missing or errored."""
+    required server is missing or errored. ia2 is optional: its fields are
+    None when unavailable so a newer node can't stall the history."""
     skipjack = _cache.get("skipjack", {}).get("data", {})
     dsai = _cache.get("dsai", {}).get("data", {})
     ia1 = _cache.get("ia1", {}).get("data", {})
+    ia2 = _cache.get("ia2", {}).get("data", {})
+    ia2_ok = bool(ia2) and not ia2.get("error")
 
     if not skipjack or not dsai or not ia1:
         return None
@@ -77,6 +81,9 @@ def _snapshot_to_history_point() -> dict | None:
         "ia1_active": ia1.get("summary", {}).get("active_gpus", 0),
         "ia1_allocated": ia1.get("summary", {}).get("allocated_gpus", 0),
         "ia1_pending_gpus": ia1.get("pending_summary", {}).get("total_gpus_requested", 0),
+        "ia2_active": ia2.get("summary", {}).get("active_gpus", 0) if ia2_ok else None,
+        "ia2_allocated": ia2.get("summary", {}).get("allocated_gpus", 0) if ia2_ok else None,
+        "ia2_pending_gpus": ia2.get("pending_summary", {}).get("total_gpus_requested", 0) if ia2_ok else None,
     }
 
 
@@ -104,11 +111,10 @@ def _extract_json(output: str) -> dict:
 
 async def _fetch_server(server: str) -> dict:
     """Run the collector script and update the cache."""
-    script = SCRIPTS[server]
     try:
         proc = await asyncio.to_thread(
             subprocess.run,
-            ["python3", str(script)],
+            ["python3", *SCRIPTS[server]],
             capture_output=True,
             text=True,
             timeout=300,
@@ -189,8 +195,9 @@ async def get_all_stats():
         _get_cached_or_fetch("skipjack"),
         _get_cached_or_fetch("dsai"),
         _get_cached_or_fetch("ia1"),
+        _get_cached_or_fetch("ia2"),
     )
-    return {"skipjack": results[0], "dsai": results[1], "ia1": results[2]}
+    return {"skipjack": results[0], "dsai": results[1], "ia1": results[2], "ia2": results[3]}
 
 
 @app.get("/stats/skipjack")
@@ -208,17 +215,23 @@ async def get_ia1_stats():
     return await _get_cached_or_fetch("ia1")
 
 
+@app.get("/stats/ia2")
+async def get_ia2_stats():
+    return await _get_cached_or_fetch("ia2")
+
+
 @app.post("/stats/refresh")
 async def refresh_all():
     results = await asyncio.gather(
         _fetch_server("skipjack"),
         _fetch_server("dsai"),
         _fetch_server("ia1"),
+        _fetch_server("ia2"),
     )
     point = _snapshot_to_history_point()
     if point:
         _history.append(point)
-    return {"skipjack": results[0], "dsai": results[1], "ia1": results[2]}
+    return {"skipjack": results[0], "dsai": results[1], "ia1": results[2], "ia2": results[3]}
 
 
 @app.post("/stats/{server}/refresh")

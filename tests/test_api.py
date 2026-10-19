@@ -117,8 +117,8 @@ async def test_existing_stats_endpoints_and_lifespan_remain_compatible(monkeypat
     async with application.app.router.lifespan_context(application.app):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=application.app), base_url="http://test") as client:
             response = await client.get("/stats")
-            assert response.json() == {name: {"server": name} for name in ("skipjack", "dsai", "ia1")}
-            for name in ("skipjack", "dsai", "ia1"):
+            assert response.json() == {name: {"server": name} for name in ("skipjack", "dsai", "ia1", "ia2")}
+            for name in ("skipjack", "dsai", "ia1", "ia2"):
                 assert (await client.get("/stats/" + name)).json() == {"server": name}
                 assert (await client.post("/stats/" + name + "/refresh")).json() == {"server": name}
             assert (await client.post("/stats/refresh")).status_code == 200

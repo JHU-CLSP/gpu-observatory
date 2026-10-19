@@ -8,9 +8,10 @@ import { PendingReason } from "./PendingReason";
 interface IA1ServerCardProps {
   stats: IA1Stats | null;
   error?: string | null;
+  title?: string;
 }
 
-export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
+export function IA1ServerCard({ stats, error, title = "IA1 Node" }: IA1ServerCardProps) {
   if (!stats) {
     return (
       <Card className="w-full">
@@ -18,7 +19,7 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Server className="h-5 w-5" />
-              <CardTitle>IA1 Node</CardTitle>
+              <CardTitle>{title}</CardTitle>
             </div>
             <Badge variant="default">Exclusive</Badge>
           </div>
@@ -35,6 +36,8 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
   const allocatedPercent = (stats.summary.allocated_gpus / stats.summary.total_gpus) * 100;
   const activePercent = (stats.summary.active_gpus / stats.summary.total_gpus) * 100;
   const memUsedPercent = (stats.summary.total_mem_used_mb / stats.summary.total_mem_mb) * 100;
+  const scratchPath = stats.scratch_path ?? "/scratch";
+  const gridCols = stats.gpus.length % 5 === 0 ? "grid-cols-5" : "grid-cols-4";
   const scratchUsedPercent = stats.scratch_space_total_tb > 0
     ? (stats.scratch_space_used_tb / stats.scratch_space_total_tb) * 100
     : 0;
@@ -44,7 +47,7 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Server className="h-5 w-5" />
-            <CardTitle>IA1 Node</CardTitle>
+            <CardTitle>{title}</CardTitle>
           </div>
           <Badge variant="default">Exclusive</Badge>
         </div>
@@ -88,7 +91,7 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
               <HardDrive className="h-4 w-4" />
-              Scratch <span className="text-xs text-muted-foreground">/scratch</span>
+              Scratch <span className="text-xs text-muted-foreground">{scratchPath}</span>
             </span>
             <span className="font-bold">
               {stats.scratch_space_used_tb} / {stats.scratch_space_total_tb} TB
@@ -126,7 +129,7 @@ export function IA1ServerCard({ stats, error }: IA1ServerCardProps) {
         {/* GPU Grid */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold">GPU Status Grid</h4>
-          <div className="grid grid-cols-5 gap-2">
+          <div className={`grid ${gridCols} gap-2`}>
             {stats.gpus.map((gpu) => {
               const isActive = gpu.util_pct > 0;
               const isIdle = stats.idle_allocated_gpus.some(idle => idle.gpu === gpu.index);

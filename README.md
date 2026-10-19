@@ -1,6 +1,6 @@
 # GPU Stats Dashboard
 
-Real-time GPU monitoring for Skipjack, DSAI, and IA1 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
+Real-time GPU monitoring for Skipjack, DSAI, IA1, and IA2 servers. A FastAPI backend runs the collector scripts via SSH and exposes a REST API; a React/Vite frontend displays the data.
 
 ![screenshot-2.png](screenshot-2.png)
 ![screenshot-1.png](screenshot-1.png)
@@ -15,7 +15,7 @@ See [setup, configuration, API, and tests](docs/skipjack-monitor.md).
 
 - Python 3.9+
 - Node.js 22 or 24 recommended for development
-- SSH access configured for `skipjack`, `dsai`, and `ia1` hosts (the detailed monitor can also read local Slurm)
+- SSH access configured for `skipjack`, `dsai`, `ia1`, and `ia2` hosts (the detailed monitor can also read local Slurm)
 
 ## Setup
 
@@ -73,6 +73,7 @@ Open http://localhost:5173/port5000/ in your browser.
 | `GET` | `/stats/history` | Overview history |
 | `GET` | `/stats/dsai` | DSAI stats |
 | `GET` | `/stats/ia1` | IA1 stats |
+| `GET` | `/stats/ia2` | IA2 stats |
 | `POST` | `/stats/refresh` | Force-refresh all servers |
 | `POST` | `/stats/{server}/refresh` | Force-refresh one server |
 
@@ -85,7 +86,7 @@ gpu-stats-ia1-lab/
   app.py                  # FastAPI backend
   pyproject.toml          # Python dependencies
   danielgpus_dsai.py      # DSAI collector script
-  danielgpus_ia1.py       # IA1 collector script
+  danielgpus_ia1.py       # IA1/IA2 collector script (node name as argument)
   frontend/               # React/Vite frontend
     src/app/App.tsx
     src/app/components/

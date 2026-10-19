@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""GPU usage dashboard for ia1 single-node server (10x A6000).
+"""GPU usage dashboard for the IA lab single-node servers
+(ia1: 10x A6000, ia2: 8x RTX PRO 6000 Blackwell).
 Shows per-GPU utilization, memory, and per-user GPU usage.
 
-Run locally — if nvidia-smi isn't found, re-executes itself on the
-ia1 remote server via SSH automatically.
+Usage: danielgpus_ia1.py [ia1|ia2]   (default: ia1)
+
+Run locally — if not already on the target node, re-executes itself
+there via SSH automatically.
 """
 
 import json
 import re
-import shutil
+import socket
 import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime
 
-REMOTE = "ia1"
+REMOTE = sys.argv[1] if len(sys.argv) > 1 else "ia1"
+SCRATCH_PATHS = {"ia1": "/scratch", "ia2": "/data"}
+SCRATCH_PATH = SCRATCH_PATHS.get(REMOTE, "/scratch")
 
-if not shutil.which("nvidia-smi"):
-    sys.exit(subprocess.run(["ssh", REMOTE, "python3", "-"], stdin=open(__file__)).returncode)
+if socket.gethostname().split(".")[0] != REMOTE:
+    sys.exit(subprocess.run(["ssh", REMOTE, "python3", "-", REMOTE], stdin=open(__file__)).returncode)
 
 
 def run(cmd):
@@ -166,11 +171,11 @@ def get_scratch_space_tb(path):
             return round(total_gb / 1024, 1), round(used_gb / 1024, 1)
     return 0, 0
 
-scratch_total_tb, scratch_used_tb = get_scratch_space_tb("/scratch")
-print(f"Scratch /scratch: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
+scratch_total_tb, scratch_used_tb = get_scratch_space_tb(SCRATCH_PATH)
+print(f"Scratch {SCRATCH_PATH}: {scratch_used_tb} TB used / {scratch_total_tb} TB total")
 
 # ============================================================
-# Pending jobs (all jobs — ia1 is our exclusive node)
+# Pending jobs (all jobs — the node is our exclusive machine)
 # ============================================================
 
 pending_out = run([
@@ -217,7 +222,7 @@ print()
 
 report = {
     "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "server": "ia1",
+    "server": REMOTE,
     "summary": {
         "total_gpus":     total_gpus,
         "allocated_gpus": allocated_gpus,
@@ -258,6 +263,7 @@ report = {
     },
     "scratch_space_total_tb": scratch_total_tb,
     "scratch_space_used_tb":  scratch_used_tb,
+    "scratch_path": SCRATCH_PATH,
 }
 
 print(json.dumps(report, indent=2))

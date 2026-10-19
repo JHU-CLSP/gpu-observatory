@@ -50,12 +50,14 @@ export default function App() {
   };
   const [skipjackStats, setSkipjackStats] = useState<SkipjackStats | null>(null);
   const [ia1Stats, setIa1Stats] = useState<IA1Stats | null>(null);
+  const [ia2Stats, setIa2Stats] = useState<IA1Stats | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skipjackError, setSkipjackError] = useState<string | null>(null);
   const [ia1Error, setIa1Error] = useState<string | null>(null);
+  const [ia2Error, setIa2Error] = useState<string | null>(null);
   const [waitSort, setWaitSort] = useState<{ col: WaitSortColumn; dir: "asc" | "desc" }>({
     col: "gpu_type",
     dir: "asc",
@@ -87,9 +89,10 @@ export default function App() {
       return response.json();
     };
     try {
-      const [skipjack, ia1, history] = await Promise.all([
+      const [skipjack, ia1, ia2, history] = await Promise.all([
         read("/stats/skipjack"),
         read("/stats/ia1"),
+        read("/stats/ia2"),
         read("/stats/history"),
       ]);
 
@@ -98,6 +101,9 @@ export default function App() {
 
       if (ia1.error) { setIa1Error(ia1.error); setIa1Stats(null); }
       else { setIa1Stats(ia1); setIa1Error(null); }
+
+      if (ia2.error) { setIa2Error(ia2.error); setIa2Stats(null); }
+      else { setIa2Stats(ia2); setIa2Error(null); }
 
       setHistoricalData(history);
       setLastUpdate(new Date());
@@ -125,8 +131,8 @@ export default function App() {
   }, [tab]);
 
   // Overview failures stay within its tab; the detailed monitor remains accessible.
-  const nothingLoaded = !skipjackStats && !ia1Stats
-    && !skipjackError && !ia1Error;
+  const nothingLoaded = !skipjackStats && !ia1Stats && !ia2Stats
+    && !skipjackError && !ia1Error && !ia2Error;
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -176,7 +182,7 @@ export default function App() {
             {fetchError && <p role="alert" className="mb-4 text-red-500">{fetchError}</p>}
             {nothingLoaded && <p role="status" className="mb-4 text-muted-foreground">Loading GPU stats…</p>}
         {/* Summary Stats — active GPU counts, shown first for a quick overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
             <div className="text-sm text-muted-foreground mb-2">Skipjack Team Usage</div>
             {skipjackStats ? (
@@ -279,7 +285,7 @@ export default function App() {
               <>
                 <div className="text-3xl font-bold text-green-600">
                   {ia1Stats.summary.active_gpus}
-                  <span className="text-lg text-muted-foreground"> / 10</span>
+                  <span className="text-lg text-muted-foreground"> / {ia1Stats.summary.total_gpus}</span>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {ia1Stats.summary.idle_allocated > 0 && (
@@ -288,6 +294,30 @@ export default function App() {
                     </Badge>
                   )}
                   {ia1Stats.summary.idle_allocated === 0 && "All allocated GPUs active"}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-1 text-red-500 text-sm mt-1">
+                <AlertCircle className="h-4 w-4" /> Unavailable
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border">
+            <div className="text-sm text-muted-foreground mb-2">IA2 Active GPUs</div>
+            {ia2Stats ? (
+              <>
+                <div className="text-3xl font-bold text-teal-600">
+                  {ia2Stats.summary.active_gpus}
+                  <span className="text-lg text-muted-foreground"> / {ia2Stats.summary.total_gpus}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {ia2Stats.summary.idle_allocated > 0 && (
+                    <Badge variant="outline" className="text-amber-600 border-amber-600">
+                      {ia2Stats.summary.idle_allocated} idle allocated
+                    </Badge>
+                  )}
+                  {ia2Stats.summary.idle_allocated === 0 && "All allocated GPUs active"}
                 </div>
               </>
             ) : (
@@ -417,8 +447,9 @@ export default function App() {
         </div>
 
         {/* Server Cards */}
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <IA1ServerCard stats={ia1Stats} error={ia1Error} />
+          <IA1ServerCard stats={ia2Stats} error={ia2Error} title="IA2 Node" />
         </div>
 
         {/* Footer */}
