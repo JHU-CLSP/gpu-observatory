@@ -124,3 +124,17 @@ async def test_existing_stats_endpoints_and_lifespan_remain_compatible(monkeypat
             assert (await client.post("/stats/refresh")).status_code == 200
             assert (await client.get("/stats/history")).status_code == 200
     assert not routes.monitor.available
+
+
+def test_history_records_without_dsai_and_survives_restart(tmp_path, monkeypatch):
+    monkeypatch.setattr(application, "HISTORY_FILE", tmp_path / "history.json")
+    monkeypatch.setattr(application, "_history", application.deque(maxlen=application.HISTORY_MAX_POINTS))
+    monkeypatch.setattr(application, "_cache", {
+        "skipjack": {"data": {"dkhasha1_totals": {"total": 19}}, "fetched_at": 0},
+        "dsai": {"data": {"error": "Connection closed", "data": None}, "fetched_at": 0},
+        "ia1": {"data": {"summary": {"active_gpus": 4}}, "fetched_at": 0},
+    })
+    application._record_history_point()
+    [point] = application._load_history()
+    assert point["skipjack_team_usage"] == 19 and point["ia1_active"] == 4
+    assert point["dsai_team_usage"] is None and point["ia2_active"] is None

@@ -309,11 +309,12 @@ export interface HistoricalDataPoint {
   skipjack_avg_wait_seconds: number | null;
   skipjack_median_wait_seconds: number | null;
   skipjack_avg_interstart_seconds: number | null;
-  dsai_team_usage: number;
-  dsai_total_usage: number;
-  dsai_pending_gpus: number;
-  dsai_h200_team_usage: number;
-  dsai_h200_total_usage: number;
+  // null when DSAI was unavailable for that snapshot.
+  dsai_team_usage: number | null;
+  dsai_total_usage: number | null;
+  dsai_pending_gpus: number | null;
+  dsai_h200_team_usage: number | null;
+  dsai_h200_total_usage: number | null;
   ia1_active: number;
   ia1_allocated: number;
   ia1_pending_gpus: number;

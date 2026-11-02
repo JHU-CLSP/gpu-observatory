@@ -29,6 +29,9 @@ from fastapi.responses import FileResponse
 
 CACHE_TTL_SECONDS = 30 * 60  # 30 minutes
 HISTORY_MAX_POINTS = 500    # ~10 days at 30-min intervals
+# Persisted so a server restart doesn't wipe the Overview trend charts.
+# data/ is gitignored and also holds the Skipjack monitor database.
+HISTORY_FILE = Path(__file__).parent / "data" / "overview-history.json"
 
 SCRIPTS: dict[str, list[str]] = {
     "skipjack": [str(Path(__file__).parent / "danielgpus_skipjack.py")],
@@ -47,22 +50,45 @@ _cache: dict[str, dict] = {}
 # History buffer  — circular buffer of HistoricalDataPoint dicts
 # ---------------------------------------------------------------------------
 
-_history: deque[dict] = deque(maxlen=HISTORY_MAX_POINTS)
+def _load_history() -> deque[dict]:
+    try:
+        points = json.loads(HISTORY_FILE.read_text())
+    except (OSError, ValueError):
+        points = []
+    return deque(points if isinstance(points, list) else [], maxlen=HISTORY_MAX_POINTS)
+
+
+_history: deque[dict] = _load_history()
+
+
+def _record_history_point() -> None:
+    point = _snapshot_to_history_point()
+    if not point:
+        return
+    _history.append(point)
+    try:
+        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = HISTORY_FILE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(list(_history)))
+        tmp.replace(HISTORY_FILE)
+    except OSError as exc:
+        print(f"Could not save overview history: {exc}")
 
 
 def _snapshot_to_history_point() -> dict | None:
-    """Build a HistoricalDataPoint from the current cache. Returns None if any
-    required server is missing or errored. ia2 is optional: its fields are
-    None when unavailable so a newer node can't stall the history."""
+    """Build a HistoricalDataPoint from the current cache. Returns None if
+    Skipjack or IA1 is missing or errored. DSAI and ia2 are optional: their
+    fields are None when unavailable so one flaky host can't stall the history."""
     skipjack = _cache.get("skipjack", {}).get("data", {})
     dsai = _cache.get("dsai", {}).get("data", {})
     ia1 = _cache.get("ia1", {}).get("data", {})
     ia2 = _cache.get("ia2", {}).get("data", {})
+    dsai_ok = bool(dsai) and not dsai.get("error")
     ia2_ok = bool(ia2) and not ia2.get("error")
 
-    if not skipjack or not dsai or not ia1:
+    if not skipjack or not ia1:
         return None
-    if skipjack.get("error") or dsai.get("error") or ia1.get("error"):
+    if skipjack.get("error") or ia1.get("error"):
         return None
 
     return {
@@ -73,11 +99,11 @@ def _snapshot_to_history_point() -> dict | None:
         "skipjack_avg_wait_seconds": skipjack.get("throughput", {}).get("avg_wait_seconds"),
         "skipjack_median_wait_seconds": skipjack.get("throughput", {}).get("median_wait_seconds"),
         "skipjack_avg_interstart_seconds": skipjack.get("throughput", {}).get("avg_interstart_seconds"),
-        "dsai_team_usage": dsai.get("dkhasha1_totals", {}).get("total", 0),
-        "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0),
-        "dsai_pending_gpus": dsai.get("dkhasha1_pending", {}).get("total_gpus_requested", 0),
-        "dsai_h200_team_usage": dsai.get("h200", {}).get("team_gpus_used", 0),
-        "dsai_h200_total_usage": dsai.get("h200", {}).get("total_gpus_used", 0),
+        "dsai_team_usage": dsai.get("dkhasha1_totals", {}).get("total", 0) if dsai_ok else None,
+        "dsai_total_usage": dsai.get("partition_totals", {}).get("used", 0) if dsai_ok else None,
+        "dsai_pending_gpus": dsai.get("dkhasha1_pending", {}).get("total_gpus_requested", 0) if dsai_ok else None,
+        "dsai_h200_team_usage": dsai.get("h200", {}).get("team_gpus_used", 0) if dsai_ok else None,
+        "dsai_h200_total_usage": dsai.get("h200", {}).get("total_gpus_used", 0) if dsai_ok else None,
         "ia1_active": ia1.get("summary", {}).get("active_gpus", 0),
         "ia1_allocated": ia1.get("summary", {}).get("allocated_gpus", 0),
         "ia1_pending_gpus": ia1.get("pending_summary", {}).get("total_gpus_requested", 0),
@@ -137,9 +163,7 @@ async def _background_refresh_loop():
             await _fetch_server(server)
             # Small delay between servers to avoid hammering SSH concurrently
             await asyncio.sleep(2)
-        point = _snapshot_to_history_point()
-        if point:
-            _history.append(point)
+        _record_history_point()
         await asyncio.sleep(CACHE_TTL_SECONDS)
 
 
@@ -228,9 +252,7 @@ async def refresh_all():
         _fetch_server("ia1"),
         _fetch_server("ia2"),
     )
-    point = _snapshot_to_history_point()
-    if point:
-        _history.append(point)
+    _record_history_point()
     return {"skipjack": results[0], "dsai": results[1], "ia1": results[2], "ia2": results[3]}
 
 
