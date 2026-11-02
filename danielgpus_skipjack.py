@@ -33,11 +33,13 @@ os.environ["PATH"] = "/opt/mprov/cloack/slurm/current/bin:" + os.environ.get("PA
 PARTITIONS = ["a100", "b200", "b300", "h100", "h200", "l40s", "rtx6000"]
 TEAM_ACCOUNT = "dkhasha1"
 
-# rtx6000 nodes (gr101-103) are also reachable via a second, condo-restricted
-# submission partition tied to our dkhasha1_rtx6000 sub-account. It's the same
-# physical GPUs, so alias it onto "rtx6000" rather than tracking it as its own
-# capacity bucket (which would double-count the nodes).
-PARTITION_ALIASES = {"rtx6000_condo": "rtx6000"}
+# rtx6000 nodes (gr101-103) and h200 nodes (gh201-206) are also reachable via
+# second, condo-restricted submission partitions tied to our dkhasha1_rtx6000
+# and dkhasha1_h200 sub-accounts. They're the same physical GPUs, so alias them
+# onto the base partition rather than tracking them as their own capacity
+# buckets (which would double-count the nodes). The condo partitions are
+# hidden, so every squeue call below needs -a to see jobs running in them.
+PARTITION_ALIASES = {"rtx6000_condo": "rtx6000", "h200_condo": "h200"}
 
 # Skipjack's node states include "drng" (draining) in addition to the
 # down|drain|not_resp|maint states seen on dsai.
@@ -412,7 +414,7 @@ team_account_gpus = {acct: defaultdict(int) for acct in TEAM_ACCOUNTS}
 users_seen = []
 
 squeue_out = run([
-    "squeue",
+    "squeue", "-a",
     # Partition width must exceed the longest partition name (e.g.
     # "rtx6000_condo", 13 chars) - squeue's fixed-width -O output runs a
     # column that overflows its declared width straight into the next
@@ -484,7 +486,7 @@ print()
 # ============================================================
 
 pending_out = run([
-    "squeue",
+    "squeue", "-a",
     "-o", "%i|%u|%P|%b|%r|%V|%a|%S|%Q",
     "--account=" + ",".join(TEAM_ACCOUNTS),
     "-t", "PD",
@@ -563,7 +565,7 @@ print()
 # ============================================================
 
 all_accounts_out = run([
-    "squeue", "-t", "R",
+    "squeue", "-a", "-t", "R",
     # Partition width must exceed the longest partition name (e.g.
     # "rtx6000_condo", 13 chars) - squeue's fixed-width -O output runs a
     # column that overflows its declared width straight into the next
@@ -596,7 +598,7 @@ def acct_total(a):
 
 
 all_queue_out = run([
-    "squeue",
+    "squeue", "-a",
     "-O", "Account:40",
     "--noheader",
 ])
