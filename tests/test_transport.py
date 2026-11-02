@@ -31,6 +31,20 @@ def test_auto_selects_local_or_ssh(monkeypatch):
     assert transport.SlurmTransport(ClusterConfig()).mode == "ssh"
 
 
+def test_auto_ignores_other_clusters_slurm_on_path(tmp_path, monkeypatch):
+    other = tmp_path / "other"
+    other.mkdir()
+    for name in REQUIRED_COMMANDS:
+        (other / name).write_text("#!/bin/sh\n")
+        (other / name).chmod(0o755)
+    monkeypatch.setenv("PATH", str(other))
+    skipjack_dir = tmp_path / "skipjack-bin"
+    skipjack_dir.mkdir()
+    assert transport.SlurmTransport(ClusterConfig(slurm_bin_dir=str(skipjack_dir))).mode == "ssh"
+    assert transport.SlurmTransport(ClusterConfig(slurm_bin_dir=str(other))).mode == "local"
+    assert transport.SlurmTransport(ClusterConfig(slurm_bin_dir="")).mode == "local"
+
+
 @pytest.mark.anyio
 async def test_local_transport_sanitizes_env_and_uses_configured_path(tmp_path, monkeypatch):
     program = tmp_path / "squeue"

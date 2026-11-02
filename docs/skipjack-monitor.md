@@ -62,7 +62,7 @@ All backend names below have the prefix `OBSERVATORY_MONITOR_`.
 | Name | Default | Meaning |
 |---|---|---|
 | `ENABLED` | `true` | Set `false` and restart to stop this collector. |
-| `TRANSPORT` | `auto` | `local` if all six Slurm tools exist; otherwise `ssh`. Can be set explicitly. |
+| `TRANSPORT` | `auto` | `local` if all six Slurm tools exist in `SLURM_BIN_DIR` (or on PATH when it is empty); otherwise `ssh`. Another cluster's Slurm on PATH, such as IA1's, therefore selects `ssh`. Can be set explicitly. |
 | `SSH_HOST` | `skipjack` | SSH config alias or `user@host`. Uses existing keys/config and host-key verification, with noninteractive authentication. |
 | `SLURM_BIN_DIR` | `/opt/mprov/cloack/slurm/current/bin` | Prepended to the local or remote PATH. Empty uses PATH unchanged. |
 | `DB` | `<repo>/data/skipjack-monitor.sqlite3` | Private SQLite history. Explicit relative paths resolve from the working directory. |

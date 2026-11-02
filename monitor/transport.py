@@ -66,7 +66,11 @@ class SlurmTransport:
         self.missing = [c for c in REQUIRED_COMMANDS if shutil.which(c, path=self.env.get("PATH")) is None]
         self.mode = config.transport
         if self.mode == "auto":
-            self.mode = "local" if not self.missing else "ssh"
+            # With a SLURM_BIN_DIR, only tools found there count: another cluster's
+            # Slurm on PATH (e.g. IA1's) must not be mistaken for Skipjack's.
+            search = config.slurm_bin_dir or self.env.get("PATH")
+            local_ok = all(shutil.which(c, path=search) for c in REQUIRED_COMMANDS)
+            self.mode = "local" if local_ok else "ssh"
         self.username = pwd.getpwuid(os.getuid()).pw_name if self.mode == "local" else None
         self.can_probe = self.mode == "local" and shutil.which("sbatch", path=self.env.get("PATH")) is not None
 
