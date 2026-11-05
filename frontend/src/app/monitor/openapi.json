@@ -1530,6 +1530,17 @@
             "type": "array",
             "title": "Partitions"
           },
+          "autoPairs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Autopairs"
+          },
+          "autoRefresh": {
+            "type": "boolean",
+            "title": "Autorefresh"
+          },
           "account": {
             "anyOf": [
               {
@@ -1608,6 +1619,8 @@
           "probeUser",
           "accounts",
           "partitions",
+          "autoPairs",
+          "autoRefresh",
           "account",
           "partition",
           "cpusPerGpu",

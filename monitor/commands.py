@@ -27,7 +27,8 @@ def probe_args(account: str, partition: str, gpus: int, minutes: int, cpus: int,
         raise ValueError("Invalid account or partition")
     if gpus not in (1, 4, 8) or minutes not in PROBE_TIME_LIMITS or not 1 <= cpus <= 256 or not 1 <= memory_gib <= 2048:
         raise ValueError("Unsupported probe size")
-    return [f"--account={account}", f"--partition={partition}", "--nodes=1", "--ntasks=1",
+    # Skipjack's submit filter cancels requests without accept_cost at its billing prompt, even test-only ones.
+    return [f"--account={account}", f"--partition={partition}", "--nodes=1", "--ntasks=1", "--comment=accept_cost",
             f"--gres=gpu:{gpus}", f"--cpus-per-task={cpus}", f"--mem={memory_gib}G", f"--time={minutes}"]
 
 

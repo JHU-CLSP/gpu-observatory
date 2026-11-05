@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 import json
+import logging
 import re
 from zoneinfo import ZoneInfo
 
@@ -12,8 +13,11 @@ from .commands import PROBE_TIME_LIMITS
 
 CACHE_SECONDS = 900
 MIN_BATCH_SECONDS = 60
+AUTO_CHECK_SECONDS = 30
 TIME_LIMIT_BATCHES = (PROBE_TIME_LIMITS[::2], PROBE_TIME_LIMITS[1::2])
 CACHE_KEY = "start_estimates_v1"
+
+log = logging.getLogger(__name__)
 
 
 class ProbeUnavailable(RuntimeError):
@@ -52,6 +56,8 @@ class StartProbes:
         self.stopping = False
         self.pause_seconds = 1
         self.gate = asyncio.Lock()
+        self.last_auto_ms = None
+        self.skipped = set()
 
     def snapshot(self, account=None, partition=None, cpus_per_gpu=8, memory_gib_per_gpu=64):
         mon = self.monitor
@@ -77,7 +83,10 @@ class StartProbes:
         target = mon.config.ssh_host if transport and getattr(transport, "mode", "local") == "ssh" else "local"
         key = json.dumps([target, user, account, partition, cpus_per_gpu, memory_gib_per_gpu])
         cached = (store.meta(CACHE_KEY, {}) if store else {}).get(key, {})
+        auto = [(a, p) for a, p in mon.config.probe_auto if a in accounts and p in partitions]
         return dict(available=available, error=error, probe_user=user, accounts=accounts, partitions=partitions,
+                    auto_pairs=[f"{a}:{p}" for a, p in auto],
+                    auto_refresh=(account, partition) in auto and (cpus_per_gpu, memory_gib_per_gpu) == (8, 64),
                     account=account, partition=partition, cpus_per_gpu=cpus_per_gpu, memory_gib_per_gpu=memory_gib_per_gpu,
                     cache_seconds=CACHE_SECONDS, checked_at_ms=cached.get("checked_at_ms"),
                     time_limits_minutes=list(PROBE_TIME_LIMITS),
@@ -106,6 +115,40 @@ class StartProbes:
             task = self.task
         await asyncio.shield(task)
         return (await run_in_thread(self.snapshot, *args))[0]
+
+    async def auto_refresh(self):
+        """Keeps config.probe_auto fresh; manual probes of the same settings count as refreshes."""
+        while not self.stopping:
+            try:
+                await self._auto_once()
+            except (ProbeThrottled, ProbeUnavailable):
+                pass  # a browser's batch took this minute, or Slurm is unreachable: retry on the next check
+            except Exception:
+                log.exception("Automatic start-time probe failed")
+            await asyncio.sleep(AUTO_CHECK_SECONDS)
+
+    async def _auto_once(self):
+        # One half-table batch per slot, with slots spread evenly over CACHE_SECONDS, so each
+        # selection is refreshed about every 15 minutes without probing them all at once.
+        view, _ = await run_in_thread(self.snapshot)
+        if not view["available"]:
+            return
+        pairs = [(a, p) for a, p in self.monitor.config.probe_auto if a in view["accounts"] and p in view["partitions"]]
+        for pair in set(self.monitor.config.probe_auto) - set(pairs) - self.skipped:
+            log.warning("Skipping automatic start-time probes for %s:%s: not a probe account and monitored partition", *pair)
+            self.skipped.add(pair)
+        now = int(self.monitor.clock() * 1000)
+        if not pairs or (self.last_auto_ms is not None and now - self.last_auto_ms < max(MIN_BATCH_SECONDS, CACHE_SECONDS // len(pairs)) * 1000):
+            return
+        due = []
+        for account, partition in pairs:
+            checked = (await run_in_thread(self.snapshot, account, partition))[0]["checked_at_ms"]
+            if checked is None or now - checked >= CACHE_SECONDS * 1000:
+                due.append((checked or 0, account, partition))
+        if due:
+            _, account, partition = min(due)
+            await self.refresh(account, partition)
+            self.last_auto_ms = now
 
     async def _collect(self, view, key):
         rows = []

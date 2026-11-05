@@ -211,6 +211,8 @@ class StartEstimatesResponse(ClusterModel):
     probe_user: Optional[str]
     accounts: list[str]
     partitions: list[str]
+    auto_pairs: list[str]
+    auto_refresh: bool
     account: Optional[str]
     partition: Optional[str]
     cpus_per_gpu: int

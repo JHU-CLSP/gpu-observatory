@@ -53,7 +53,7 @@ beforeEach(() => {
     })) }
     let status = 200
     if (url.pathname.endsWith('/start-estimates')) {
-      data = { available: false, error: null, probeUser: 'viewer', accounts: [], partitions: [], account: null, partition: null,
+      data = { available: false, error: null, probeUser: 'viewer', accounts: [], partitions: [], autoPairs: [], autoRefresh: false, account: null, partition: null,
         timeLimitsMinutes: [60, 240, 720, 1440, 2880, 4320], nextTimeLimitsMinutes: [60, 720, 2880],
         cpusPerGpu: 8, memoryGibPerGpu: 64, cacheSeconds: 900, checkedAtMs: null, rows: [], probing: false }
     } else if (url.pathname.endsWith('/queue-speed')) {

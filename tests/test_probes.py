@@ -79,6 +79,7 @@ async def test_only_guard_and_environment_on_both_transports(tmp_path, monkeypat
     args, account_env, job_env = json.loads(result.stdout)
     assert args[:2] == ['--test-only', '--wrap=true']
     assert '--gres=gpu:4' in args and f'--time={minutes}' in args and '--mem=256G' in args
+    assert '--comment=accept_cost' in args
     assert account_env is None and job_env is None
     assert (await runner('sbatch', ['--wrap=true'])).code == 126
     with pytest.raises(ValueError):
@@ -182,3 +183,53 @@ async def test_shutdown_cancels_probe_before_closing_store(tmp_path):
     with pytest.raises(asyncio.CancelledError):
         await request
     assert mon.store is None and mon.probes.task.done()
+
+
+@pytest.mark.anyio
+async def test_auto_refresh_spreads_half_batches_over_the_cache_interval(tmp_path):
+    mon = make_monitor(tmp_path, probe_auto=(('bvandur1_blabscify', 'a100'), ('dkhasha1_safety', 'h200'), ('not_ours', 'a100')))
+    await mon.tick()
+    mon.transport = FakeProbeTransport()
+    mon.probes.pause_seconds = 0
+    pairs = lambda: [call[:2] for call in mon.transport.calls]
+    try:
+        view = mon.probes.snapshot()[0]
+        assert view['auto_pairs'] == ['bvandur1_blabscify:a100', 'dkhasha1_safety:h200'] and view['auto_refresh']
+        assert not mon.probes.snapshot(cpus_per_gpu=4)[0]['auto_refresh']
+        assert not mon.probes.snapshot('dkhasha1_safety', 'a100')[0]['auto_refresh']
+        await mon.probes._auto_once()
+        assert pairs() == [('bvandur1_blabscify', 'a100')] * 9 and mon.probes.skipped == {('not_ours', 'a100')}
+        await mon.probes._auto_once()  # two selections: the next slot is half the cache interval away
+        assert len(pairs()) == 9
+        mon.clock = lambda: NOW + CACHE_SECONDS // 2
+        await mon.probes._auto_once()
+        assert pairs()[9:] == [('dkhasha1_safety', 'h200')] * 9
+        mon.clock = lambda: NOW + CACHE_SECONDS
+        await mon.probes._auto_once()
+        assert pairs()[18:] == [('bvandur1_blabscify', 'a100')] * 9
+        assert {call[3] for call in mon.transport.calls[18:]} == set(TIME_LIMIT_BATCHES[1])
+        # A browser's batch in the same minute defers the automatic one until the throttle allows it.
+        mon.clock = lambda: NOW + CACHE_SECONDS * 3 // 2
+        await mon.probes.refresh(cpus_per_gpu=4)
+        with pytest.raises(ProbeThrottled):
+            await mon.probes._auto_once()
+        assert len(pairs()) == 36
+        mon.clock = lambda: NOW + CACHE_SECONDS * 3 // 2 + MIN_BATCH_SECONDS
+        await mon.probes._auto_once()
+        assert pairs()[36:] == [('dkhasha1_safety', 'h200')] * 9
+    finally:
+        await mon.stop()
+
+
+def test_probe_auto_pairs_from_environment(monkeypatch):
+    monkeypatch.setenv('OBSERVATORY_MONITOR_PROBE_AUTO', ' acct_a:h200, acct_a:h200,acct_b:a100 ')
+    assert ClusterConfig.from_env().probe_auto == (('acct_a', 'h200'), ('acct_b', 'a100'))
+    monkeypatch.setenv('OBSERVATORY_MONITOR_PROBE_AUTO', '')
+    assert ClusterConfig.from_env().probe_auto == ()
+    monkeypatch.delenv('OBSERVATORY_MONITOR_PROBE_AUTO')
+    assert ClusterConfig.from_env().probe_auto == ClusterConfig().probe_auto
+    assert ('dkhasha1_safety', 'h200') in ClusterConfig().probe_auto
+    for bad in ('a100', 'acct:a100;x'):
+        monkeypatch.setenv('OBSERVATORY_MONITOR_PROBE_AUTO', bad)
+        with pytest.raises(ValueError):
+            ClusterConfig.from_env()

@@ -66,6 +66,7 @@ class ClusterMonitor:
         self._loop_task = None
         self._tick_task = None
         self._backfill_task = None
+        self._probe_task = None
         self._stopping = False
         self.probes = StartProbes(self)
 
@@ -89,6 +90,8 @@ class ClusterMonitor:
         self.available = self._transport_ready
         # Startup doesn't wait for Slurm or a history scan; the rest of the observatory can serve immediately.
         self._loop_task = asyncio.create_task(self._loop(), name="cluster-collector")
+        if self.config.probe_auto:
+            self._probe_task = asyncio.create_task(self.probes.auto_refresh(), name="start-time-auto-probes")
 
     def _open_store(self):
         # Retain ownership even if startup is cancelled while its worker finishes opening.
@@ -97,7 +100,7 @@ class ClusterMonitor:
     async def stop(self):
         self._stopping = True
         await self.probes.stop()
-        tasks = [t for t in (self._loop_task, self._tick_task, self._backfill_task) if t is not None]
+        tasks = [t for t in (self._loop_task, self._tick_task, self._backfill_task, self._probe_task) if t is not None]
         for task in tasks:
             task.cancel()
         try:

@@ -449,6 +449,10 @@ export interface components {
             accounts: string[];
             /** Partitions */
             partitions: string[];
+            /** Autopairs */
+            autoPairs: string[];
+            /** Autorefresh */
+            autoRefresh: boolean;
             /** Account */
             account: string | null;
             /** Partition */

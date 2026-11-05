@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 
 PREFIX = "OBSERVATORY_MONITOR_"
+DEFAULT_PROBE_AUTO = "dkhasha1_safety:h200,bvandur1_blabscify:a100,dkhasha1_h200:h200_condo,dkhasha1_rtx6000:rtx6000_condo"
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "data" / "skipjack-monitor.sqlite3"
 
 
@@ -34,6 +35,8 @@ class ClusterConfig:
     backfill_pause: float = 2
     jobs_days: int = 90
     samples_days: int = 60
+    # account:partition selections whose start estimates the server refreshes every 15 minutes.
+    probe_auto: tuple[tuple[str, str], ...] = tuple(tuple(pair.split(":")) for pair in DEFAULT_PROBE_AUTO.split(","))
 
     @classmethod
     def from_env(cls) -> "ClusterConfig":
@@ -54,6 +57,13 @@ class ClusterConfig:
         host = os.environ.get(PREFIX + "SSH_HOST", "skipjack")
         if not re.fullmatch(r"[\w][\w.@:-]*", host):
             raise ValueError(f"{PREFIX}SSH_HOST must be an SSH host or user@host")
+        probe_auto = []
+        for item in filter(None, (s.strip() for s in os.environ.get(PREFIX + "PROBE_AUTO", DEFAULT_PROBE_AUTO).split(","))):
+            account, sep, partition = item.partition(":")
+            if not sep or not all(re.fullmatch(r"[\w.-]+", name) for name in (account, partition)):
+                raise ValueError(f"{PREFIX}PROBE_AUTO must contain account:partition pairs")
+            if (account, partition) not in probe_auto:
+                probe_auto.append((account, partition))
         enabled = os.environ.get(PREFIX + "ENABLED", "true").lower()
         if enabled not in {"true", "false", "1", "0"}:
             raise ValueError(f"{PREFIX}ENABLED must be true or false")
@@ -65,4 +75,5 @@ class ClusterConfig:
             poll_seconds=env_int("POLL_SECONDS", 300, 60, 86400),
             backfill_days=env_int("BACKFILL_DAYS", 14, 0, 90),
             command_timeout=env_int("COMMAND_TIMEOUT", 60, 1, 300),
+            probe_auto=tuple(probe_auto),
         )
