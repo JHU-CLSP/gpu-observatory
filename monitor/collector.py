@@ -12,10 +12,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .async_utils import run_in_thread
 
-from .commands import ASSOC_ARGS, PARTITION_ARGS, SHARE_FIELDS, CommandResult, nodes_args, queue_args, sacct_args
+from .commands import ASSOC_ARGS, CONFIG_ARGS, PARTITION_ARGS, SHARE_FIELDS, CommandResult, nodes_args, queue_args, sacct_args
 from .config import ClusterConfig
 from .transport import SlurmTransport
-from .parse import account_load, parse_associations, parse_jobs, parse_nodes, parse_partitions, parse_qos, parse_queue, parse_shares, pool_capacity
+from .parse import account_load, parse_associations, parse_jobs, parse_nodes, parse_partitions, parse_qos, parse_queue, parse_reset_period, parse_shares, pool_capacity
 from .reconstruct import fill_gaps
 from .store import ClusterDbLocked, ClusterStore
 from .probes import StartProbes
@@ -173,8 +173,13 @@ class ClusterMonitor:
         await self.tick()
 
     async def _metadata(self, now: int) -> list[str]:
-        assoc, partitions = await asyncio.gather(self._read("sacctmgr", ASSOC_ARGS), self._read("scontrol", PARTITION_ARGS))
+        assoc, partitions, config = await asyncio.gather(self._read("sacctmgr", ASSOC_ARGS), self._read("scontrol", PARTITION_ARGS),
+                                                         self._read("scontrol", CONFIG_ARGS))
         errors = []
+        if config.code == 0:
+            await run_in_thread(self.store.set_meta, "usage_reset", parse_reset_period(config.stdout))
+        else:
+            errors.append(self._failure("scontrol config", config))
         if partitions.code == 0:
             self.partition_meta = parse_partitions(partitions.stdout)
             await run_in_thread(self.store.replace_metadata, "partitions", list(self.partition_meta.values()), "name")

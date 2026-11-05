@@ -100,9 +100,15 @@ Account `LevelFS` and user `FairShare` describe different levels of Slurm's fair
 share tree. The "best FS" badge compares member accounts with no recorded budget
 and account headroom. It is not a start-time prediction or submission check.
 
-Budgets show recorded billing-minutes or GPU-hours, including committed running
-usage. No monetary conversion is assumed. QoS determines enforcement. Missing
-readings remain unknown. Collection errors preserve previous successful data;
+Budgets come from `GrpTRESMins`. Billing budgets are shown in Service Units (SU),
+the unit of the ARCH allocation portal: 1 SU is one billing-hour (60 billing-minutes)
+and $0.001, so Skipjack's default 10,800,000 billing-minute budget is 180,000 SU
+($180) a month. GPU-minute budgets are shown in GPU-hours. The bar includes usage
+reserved by running jobs (`TRESRunMins`), and the reset date follows Slurm's
+`PriorityUsageResetPeriod` (monthly on Skipjack). The dollar figure is only ARCH's
+conversion; no charges are applied yet. The ARCH portal's weekly spend cap is
+shown only if Slurm reports it as a limit. QoS determines enforcement.
+Missing readings remain unknown. Collection errors preserve previous successful data;
 freshness/error notices identify that condition.
 
 Shared physical nodes count once per pool, including condo aliases. Queue waits

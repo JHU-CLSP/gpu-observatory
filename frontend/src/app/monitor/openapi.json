@@ -456,7 +456,7 @@
           "unit": {
             "type": "string",
             "enum": [
-              "billing-minutes",
+              "SU",
               "GPU-hours"
             ],
             "title": "Unit"
@@ -476,6 +476,17 @@
           "remaining": {
             "type": "number",
             "title": "Remaining"
+          },
+          "resetsAtMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resetsatms"
           }
         },
         "type": "object",
@@ -484,7 +495,8 @@
           "limit",
           "used",
           "committed",
-          "remaining"
+          "remaining",
+          "resetsAtMs"
         ],
         "title": "BudgetView"
       },

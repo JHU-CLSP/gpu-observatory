@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { ClusterAccountView, ClusterGroupView } from './types';
+import type { BudgetView, ClusterAccountView, ClusterGroupView } from './types';
 import { Meter } from './charts/Meter';
 import { Sparkline } from './charts/Sparkline';
-import { fmtFs, fmtBudget } from './format';
+import { fmtFs, fmtBudget, fmtDay, fmtUsd, USD_PER_SU } from './format';
 import { fmtClock } from './format';
 
 /** Highest fair share among member accounts with account headroom and no budget. */
@@ -31,8 +31,8 @@ export function AccountsPanel({ groups, serverNowMs, tz, selectedUser }: { group
               <span className="muted small">{g.runGpus} GPUs running · {g.pendGpus} pending · {g.accounts.length} accounts</span>
             </div>
             <table className="data">
-              <thead><tr><th>account</th><th title="Running GPUs against the tightest account-wide cap">running / cap</th><th title="GPUs of pending jobs waiting on the queue (Priority/Resources); limit- or hold-bound GPUs follow in grey">pending</th><th title="Selected user’s FairShare factor; L = account LevelFS">{selectedUser ? `${selectedUser} FS` : 'Account FS'}</th><th>budget</th><th>running, 24 h</th></tr></thead>
-              <tbody>{g.accounts.map((a) => <AccountRow key={a.account} a={a} best={a.account === best} labelAt={labelAt} />)}</tbody>
+              <thead><tr><th>account</th><th title="Running GPUs against the tightest account-wide cap">running / cap</th><th title="GPUs of pending jobs waiting on the queue (Priority/Resources); limit- or hold-bound GPUs follow in grey">pending</th><th title="Selected user’s FairShare factor; L = account LevelFS">{selectedUser ? `${selectedUser} FS` : 'Account FS'}</th><th title="Usage budget for the current reset period; the bar includes usage reserved by running jobs. 1 SU = $0.001 (ARCH)">budget</th><th>running, 24 h</th></tr></thead>
+              <tbody>{g.accounts.map((a) => <AccountRow key={a.account} a={a} best={a.account === best} labelAt={labelAt} tz={tz} />)}</tbody>
             </table>
           </div>
         ))}
@@ -41,7 +41,7 @@ export function AccountsPanel({ groups, serverNowMs, tz, selectedUser }: { group
   );
 }
 
-function AccountRow({ a, best, labelAt }: { a: ClusterAccountView; best: boolean; labelAt: (i: number) => string }) {
+function AccountRow({ a, best, labelAt, tz }: { a: ClusterAccountView; best: boolean; labelAt: (i: number) => string; tz: string }) {
   const [open, setOpen] = useState(false);
   const held = a.pend.gpus - a.pend.gpusQueue;
   const b = a.budget;
@@ -63,9 +63,7 @@ function AccountRow({ a, best, labelAt }: { a: ClusterAccountView; best: boolean
           {a.pend.gpusQueue}{held > 0 && <span className="muted small"> +{held} held</span>}
         </td>
         <td>{a.member !== null && <span className="mono">{fmtFs(a.userFairshare)} </span>}<span className="muted small mono">L {fmtFs(a.levelFs, a.levelFsInf)}</span></td>
-        <td>{b ? <Meter used={b.used + b.committed} cap={b.limit} text={`${fmtBudget(b.used)} / ${fmtBudget(b.limit)} ${b.unit}`} width={60}
-          title={`Usage budget (GrpTRESMins): ${fmtBudget(b.used)} used + ${fmtBudget(b.committed)} committed by running jobs of ${fmtBudget(b.limit)}; ${fmtBudget(b.remaining)} left. Units: ${b.unit}. Enforcement depends on cluster QoS settings.`} />
-          : <span className="muted">—</span>}</td>
+        <td>{b ? <Budget b={b} tz={tz} /> : <span className="muted">—</span>}</td>
         <td><Sparkline values={a.trend} refValue={a.capGpus} labelAt={labelAt} ariaLabel={`${a.account} running GPUs, last 24 hours`} estimated={a.trendEst} /></td>
       </tr>
       {open && (
@@ -78,6 +76,23 @@ function AccountRow({ a, best, labelAt }: { a: ClusterAccountView; best: boolean
           ))}
         </td></tr>
       )}
+    </>
+  );
+}
+
+/** GrpTRESMins usage against its limit; billing budgets are in SU, shown with ARCH's dollar equivalent. */
+function Budget({ b, tz }: { b: BudgetView; tz: string }) {
+  const su = b.unit === 'SU';
+  const reset = b.resetsAtMs !== null ? `resets ${fmtDay(b.resetsAtMs, tz)}` : null;
+  const notes = [su && `${fmtUsd(b.used * USD_PER_SU)} of ${fmtUsd(b.limit * USD_PER_SU)}`,
+    b.committed > 0 && `+${fmtBudget(b.committed)} reserved`, reset].filter(Boolean);
+  const title = `Usage budget (GrpTRESMins): ${fmtBudget(b.used)} ${b.unit} used + ${fmtBudget(b.committed)} reserved by running jobs, of ${fmtBudget(b.limit)}; ${fmtBudget(b.remaining)} left.`
+    + (su ? ' 1 SU = one billing-hour = $0.001 (ARCH rate; no charges are applied yet).' : '')
+    + (reset ? ` Usage ${reset}.` : '') + ' Enforcement depends on cluster QoS settings.';
+  return (
+    <>
+      <Meter used={b.used + b.committed} cap={b.limit} text={`${fmtBudget(b.used)} / ${fmtBudget(b.limit)} ${b.unit}`} width={60} title={title} />
+      {notes.length > 0 && <div className="muted small">{notes.join(' · ')}</div>}
     </>
   );
 }

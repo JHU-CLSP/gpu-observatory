@@ -16,6 +16,7 @@ NODE_FORMAT = "NodeList:40,Partition:40,StateLong:24,Gres:80,GresUsed:120,CPUsSt
 SHARE_FIELDS = "Account,User,RawShares,NormShares,RawUsage,EffectvUsage,FairShare,LevelFS,GrpTRESMins,GrpTRESRaw,TRESRunMins"
 ASSOC_ARGS = ["-nP", "show", "assoc", "format=Account,ParentName,User,QOS,GrpTRES,GrpTRESMins"]
 PARTITION_ARGS = ["-a", "-o", "show", "partition"]
+CONFIG_ARGS = ["show", "config"]
 REQUIRED_COMMANDS = ("squeue", "sinfo", "sshare", "sacct", "sacctmgr", "scontrol")
 PROBE_TIME_LIMITS = (60, 240, 720, 1440, 2880, 4320)
 

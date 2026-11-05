@@ -29,7 +29,16 @@ export function meterTone(used: number, cap: number | null): 'accent' | 'warn' |
 }
 
 export function fmtBudget(value: number): string {
-  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return value.toLocaleString(undefined, { maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 1 });
+}
+
+/** ARCH's published rate: 1 SU (one Slurm billing-hour) = $0.001. Billing is not active yet. */
+export const USD_PER_SU = 0.001;
+
+/** "$2.87", or whole dollars from $100 up. */
+export function fmtUsd(value: number): string {
+  const digits = Math.abs(value) >= 100 ? 0 : 2;
+  return value.toLocaleString(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 /** Fairshare factor: 3 decimals, "inf" for an account with no usage share left to compare. */
@@ -52,6 +61,10 @@ export function fmtBytes(bytes: number): string {
 
 export function fmtClock(ms: number, tz: string): string {
   return new Intl.DateTimeFormat(undefined, { timeZone: tz || undefined, hour: '2-digit', minute: '2-digit', hour12: false }).format(ms);
+}
+
+export function fmtDay(ms: number, tz: string): string {
+  return new Intl.DateTimeFormat(undefined, { timeZone: tz || undefined, month: 'short', day: 'numeric' }).format(ms);
 }
 
 export function fmtDateTime(ms: number, tz: string): string {

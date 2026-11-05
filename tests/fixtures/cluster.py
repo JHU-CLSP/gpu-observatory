@@ -19,6 +19,7 @@ PARTITIONS = "\n".join([
     "PartitionName=h200_condo Hidden=YES NodeSets=h200 PriorityTier=10 TRES=gres/gpu=4",
     "PartitionName=med Hidden=NO NodeSets=med PriorityTier=1 TRES=cpu=1000",
 ])
+CONFIG = "PriorityFlags            = CALCULATE_RUNNING,MAX_TRES\nPriorityUsageResetPeriod = MONTHLY"
 NODES = "\n".join([
     "ga01 a100 mix gpu:a100:8 gpu:a100:2(IDX:0-1) 16/112/0/128 800000 100000",
     "gh01 h200 mix- gpu:h200:4 gpu:h200:1(IDX:0) 8/116/0/124 1500000 100000",
@@ -59,5 +60,5 @@ class FakeSlurm:
             return CommandResult(1, stderr="temporarily unavailable")
         if command == "sacctmgr":
             return CommandResult(0, QOS if "qos" in args else ASSOC)
-        return CommandResult(0, {"squeue": QUEUE, "sinfo": NODES, "scontrol": PARTITIONS,
+        return CommandResult(0, {"squeue": QUEUE, "sinfo": NODES, "scontrol": CONFIG if "config" in args else PARTITIONS,
                                  "sshare": SHARES, "sacct": JOBS}[command])
