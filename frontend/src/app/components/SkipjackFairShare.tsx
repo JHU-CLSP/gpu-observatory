@@ -6,6 +6,7 @@ import {
   SkipjackFairShareNode,
 } from "../types/gpu-stats";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { fmtSu, fmtUsd } from "./su";
 
 // Written for people who have never heard of "fair share": every term that
 // shows up on screen gets a plain-language hover definition here.
@@ -24,6 +25,8 @@ const DEFINITIONS = {
   runsOn: "Which GPU types jobs under this account can use, and any limit on how many GPUs it can hold at once.",
   budget:
     "A hard cap on total GPU time for this account. Once it's used up, new jobs here won't start until usage fades or resets.",
+  suBudget:
+    "A spending limit in Service Units (SU), the unit of the ARCH allocation portal: 1 SU = $0.001 (no charges are applied yet). Running jobs reserve SU for their whole time limit, and a new job only starts if its whole time limit fits in what's left. Usage resets on the date shown.",
   account:
     "A Slurm account is what your job is charged to. Choose it with #SBATCH --account=NAME (or --account=NAME on srun/sbatch).",
   levelFs:
@@ -62,6 +65,7 @@ const pct = (v: number | null) => (v == null ? "—" : `${(v * 100).toFixed(v < 
 const ratioOf = (n: SkipjackFairShareNode) =>
   n.norm_shares && n.effective_usage != null ? n.effective_usage / n.norm_shares : null;
 const fmtRatio = (r: number) => (r >= 10 ? r.toFixed(0) : r.toFixed(1));
+const fmtDay = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 // Standing in the queue, in words. Status colour always comes with an icon and
 // a label.
@@ -85,6 +89,58 @@ function UsageGauge({ ratio }: { ratio: number }) {
         className="absolute top-0.5 h-3 w-3 -ml-1.5 rounded-full border-2 border-white dark:border-gray-800 bg-gray-700 dark:bg-gray-200"
         style={{ left: `${pos}%` }}
       />
+    </div>
+  );
+}
+
+/** SU spent (used + reserved by running jobs) against the budget. The fill carries severity:
+ *  accent, warning from 80 %, danger once nothing is left; the track is a lighter step of it. */
+function SuBudget({ a, resetsOn, period }: { a: SkipjackFairShareAccount; resetsOn: string | null; period: string | null }) {
+  const limit = a.su_budget!;
+  const used = a.su_used ?? 0;
+  const reserved = a.su_reserved ?? 0;
+  const left = Math.max(0, limit - used - reserved);
+  const spent = limit > 0 ? (used + reserved) / limit : 1;
+  const tone =
+    spent >= 1
+      ? { fill: "bg-red-600 dark:bg-red-500", soft: "bg-red-300 dark:bg-red-800", track: "bg-red-100 dark:bg-red-950", icon: "text-red-600", label: "Used up: new jobs here won't start" }
+      : spent >= 0.8
+        ? { fill: "bg-amber-500", soft: "bg-amber-300 dark:bg-amber-700", track: "bg-amber-100 dark:bg-amber-950", icon: "text-amber-600", label: "Almost used up" }
+        : { fill: "bg-blue-600 dark:bg-blue-400", soft: "bg-blue-300 dark:bg-blue-700", track: "bg-blue-100 dark:bg-blue-950", icon: "", label: null };
+  const width = (v: number) => `${Math.min(100, (v / limit) * 100)}%`;
+  const reset = resetsOn ? ` · resets ${fmtDay(resetsOn)}` : "";
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <Hint text={DEFINITIONS.suBudget} className="font-medium">
+          {period === "MONTHLY" ? "Monthly budget" : "Budget"}
+        </Hint>
+        <span className="text-muted-foreground">
+          {fmtSu(left)} SU left ({fmtUsd(left)})
+        </span>
+      </div>
+      <div
+        className={`flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full ${tone.track}`}
+        role="meter"
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={used + reserved}
+        aria-label={`${a.account} budget: ${fmtSu(used)} SU used and ${fmtSu(reserved)} reserved of ${fmtSu(limit)}`}
+      >
+        <div className={`h-full rounded-full ${tone.fill}`} style={{ width: width(used) }} />
+        {reserved > 0 && <div className={`h-full rounded-full ${tone.soft}`} style={{ width: width(reserved) }} />}
+      </div>
+      <div className="text-[10px] text-muted-foreground">
+        {tone.label && (
+          <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+            <AlertTriangle className={`h-3 w-3 ${tone.icon}`} /> {tone.label} ·{" "}
+          </span>
+        )}
+        {fmtSu(used)} of {fmtSu(limit)} SU used ({fmtUsd(used)} of {fmtUsd(limit)})
+        {reserved > 0 && ` + ${fmtSu(reserved)} reserved by running jobs`}
+        {reset}
+      </div>
     </div>
   );
 }
@@ -147,11 +203,13 @@ function AccountCard({
   parent,
   generalTypes,
   bestFor,
+  priority,
 }: {
   a: SkipjackFairShareAccount;
   parent: SkipjackFairShareAccount | undefined;
   generalTypes: string[];
   bestFor: string[];
+  priority: SkipjackFairShareData["priority"];
 }) {
   const st = standing(a.ahead_of_pct);
   const StIcon = st.icon;
@@ -242,6 +300,8 @@ function AccountCard({
         )
       )}
 
+      {a.su_budget != null && <SuBudget a={a} resetsOn={priority.usage_resets_on ?? null} period={priority.usage_reset} />}
+
       <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
         <Hint text={DEFINITIONS.pending}>{a.pending_jobs} waiting jobs</Hint>
         {budgetLeft != null && (
@@ -265,10 +325,12 @@ export function SkipjackFairShare({ data }: { data: SkipjackFairShareData }) {
     .sort((x, y) => (y.fs_factor ?? -1) - (x.fs_factor ?? -1));
 
   // Best account per GPU type: the highest fair-share score among accounts
-  // that can run it and haven't spent their GPU-time budget.
+  // that can run it and haven't spent their GPU-time or SU budget.
   const typesOf = (a: SkipjackFairShareAccount) => a.gpu_types ?? generalTypes;
   const usable = (a: SkipjackFairShareAccount) =>
-    a.fs_factor != null && (a.gpu_hours_budget == null || (a.gpu_hours_used ?? 0) < a.gpu_hours_budget);
+    a.fs_factor != null &&
+    (a.gpu_hours_budget == null || (a.gpu_hours_used ?? 0) < a.gpu_hours_budget) &&
+    (a.su_budget == null || (a.su_used ?? 0) + (a.su_reserved ?? 0) < a.su_budget);
   const allTypes = [...new Set([...generalTypes, ...leaves.flatMap(typesOf)])];
   const bestFor = new Map<string, string[]>();
   for (const t of allTypes) {
@@ -307,6 +369,9 @@ export function SkipjackFairShare({ data }: { data: SkipjackFairShareData }) {
                   {byName.get(acct)?.gpu_hours_budget != null && (
                     <span className="text-muted-foreground"> (has a limited GPU-hour budget)</span>
                   )}
+                  {byName.get(acct)?.su_budget != null && (
+                    <span className="text-muted-foreground"> (spends its limited SU budget)</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -324,6 +389,7 @@ export function SkipjackFairShare({ data }: { data: SkipjackFairShareData }) {
               parent={a.parent ? byName.get(a.parent) : undefined}
               generalTypes={generalTypes}
               bestFor={bestFor.get(a.account) ?? []}
+              priority={data.priority}
             />
           ))}
         </div>

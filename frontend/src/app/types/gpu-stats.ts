@@ -10,6 +10,10 @@ export interface SkipjackPartition {
   deny_accounts: string | null;
   allow_qos: string | null;
   deny_qos: string | null;
+  /** TRESBillingWeights in SU (1 SU = one billing-hour = $0.001) per hour of one GPU, CPU, or GB of memory. */
+  su_per_gpu_hour?: number | null;
+  su_per_cpu_hour?: number | null;
+  su_per_gb_hour?: number | null;
 }
 
 export interface SkipjackAccountUsage {
@@ -63,6 +67,11 @@ export interface SkipjackFairShareAccount extends SkipjackFairShareNode {
   gpu_types: string[] | null;
   gpu_hours_budget: number | null;
   gpu_hours_used: number | null;
+  /** Spending budget in ARCH Service Units (1 SU = one billing-hour = $0.001); null = none. */
+  su_budget: number | null;
+  su_used: number | null;
+  /** SU that running jobs would still use by their time limits. */
+  su_reserved: number | null;
 }
 
 export interface SkipjackPriorityConfig {
@@ -70,6 +79,10 @@ export interface SkipjackPriorityConfig {
   max_age_days: number | null;
   decay_half_life_days: number | null;
   usage_reset: string | null;
+  /** PriorityFlags=MAX_TRES: billing per node is the most expensive weighted resource, not the sum. */
+  max_tres?: boolean;
+  /** Local date (YYYY-MM-DD) usage next resets; null if it never does. */
+  usage_resets_on?: string | null;
   favor_small: boolean;
   backfill: boolean;
 }
