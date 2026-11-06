@@ -29,6 +29,8 @@ async def lifespan(app):
             result = await fake(command, args)
             # Shift the synthetic fixture dates to today for representative freshness.
             out = re.sub(r"\b1\d{9}\b", lambda m: str(int(m[0]) + now - NOW), result.stdout)
+            if command == "sshare":  # Show a monthly SU budget like Skipjack's scavenger accounts.
+                out = out.replace("|billing=6000000000|billing=20000|billing=2000", "|billing=10800000|billing=8500000|billing=30000")
             return CommandResult(result.code, out, result.stderr)
         monitor = ClusterMonitor(replace(ClusterConfig(), db_path=Path(directory) / "preview.db", backfill_days=0), runner=runner)
         routes.monitor = monitor

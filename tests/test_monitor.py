@@ -2,6 +2,8 @@
 
 import asyncio
 from dataclasses import replace
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -65,8 +67,23 @@ def test_parsers_preserve_arrays_attempts_epoch_and_unknowns():
     assert parse.shape("cpu=8,mem=187.50G,gres/gpu=1")["mem_mb"] == 192000
     assert parse.limit_seconds("2-23:00:00") == 2*86400+23*3600
     assert parse.wait_class("Dependency") == "dependency"
+    assert parse.parse_reset_period("PriorityUsageResetPeriod = monthly\nPriorityWeightAge = 0") == "MONTHLY"
+    assert parse.parse_reset_period("PriorityWeightAge = 0") is None
     assert parse.is_limited("MaxGRESPerAccount")
     assert not parse.is_limited("Resources")
+
+
+def test_usage_reset_boundaries_follow_slurm_periods():
+    zone = ZoneInfo("America/New_York")
+    at = lambda *day: int(datetime(*day, tzinfo=zone).timestamp())
+    now = at(2026, 11, 5, 14, 30)  # a Thursday
+    for period, expected in (("DAILY", at(2026, 11, 6)), ("WEEKLY", at(2026, 11, 8)), ("MONTHLY", at(2026, 12, 1)),
+                             ("QUARTERLY", at(2027, 1, 1)), ("YEARLY", at(2027, 1, 1))):
+        assert views.next_usage_reset(period, now, "America/New_York") == expected
+    assert views.next_usage_reset("MONTHLY", at(2026, 12, 31, 23, 59), "America/New_York") == at(2027, 1, 1)
+    assert views.next_usage_reset("WEEKLY", at(2026, 11, 8, 9), "America/New_York") == at(2026, 11, 15)
+    assert views.next_usage_reset("NONE", now, "America/New_York") is None
+    assert views.next_usage_reset(None, now, "America/New_York") is None
 
 
 def test_shared_pools_count_nodes_and_queue_pressure_once():
@@ -154,6 +171,7 @@ async def test_collection_views_and_failed_reads_preserve_data(tmp_path):
         account = ov["groups"][0]["accounts"][0]
         assert account["userFairshare"] == .165 and account["budget"] is None
         assert account["capGpus"] == 32 and account["member"]
+        assert mon.store.meta("usage_reset") == "MONTHLY"
         assert len(ov["capacity"]) == 2 and ov["sampleMs"] == NOW*1000
         speed = QueueSpeedResponse.model_validate(views.queue_speed(mon, "24h", "ours", False, NOW*1000))
         assert speed.rows[0].p50_sec == 300

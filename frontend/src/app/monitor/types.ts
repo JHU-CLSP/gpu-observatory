@@ -3,6 +3,7 @@ import type { components } from './generated-api'
 
 export type ClusterOverview = components['schemas']['ClusterOverview']
 export type ClusterAccountView = components['schemas']['ClusterAccountView']
+export type BudgetView = components['schemas']['BudgetView']
 export type ClusterGroupView = components['schemas']['ClusterGroupView']
 export type ClusterPoolView = components['schemas']['ClusterPoolView']
 export type QueueSpeedResponse = components['schemas']['QueueSpeedResponse']

@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   requests = []; failed = false
-  data = { available: true, error: null, probeUser: 'server-user', accounts: ['account-a', 'account-b'], partitions: ['a100', 'h100'],
+  data = { available: true, error: null, probeUser: 'server-user', accounts: ['account-a', 'account-b'], partitions: ['a100', 'h100'], autoPairs: [], autoRefresh: false,
     account: 'account-a', partition: 'a100', cpusPerGpu: 8, memoryGibPerGpu: 64, cacheSeconds: 900,
     timeLimitsMinutes: [60, 240, 720, 1440, 2880, 4320], nextTimeLimitsMinutes: [60, 720, 2880],
     checkedAtMs: null, rows: [], probing: false }
@@ -84,4 +84,13 @@ it('probes the chosen resources and keeps successful rows when a later check fai
   expect(host.querySelectorAll('tbody summary')).toHaveLength(2)
   await act(async () => { root.render(<StartEstimatesPanel now={Date.now() + 900000} tz="UTC" />) })
   expect(host.textContent).toContain('stale')
+})
+
+it('labels selections the server refreshes automatically', async () => {
+  data = { ...data, autoPairs: ['account-a:a100', 'account-b:h100'], autoRefresh: true }
+  await mount()
+  expect(host.textContent).toContain('auto · 15 min')
+  expect(host.textContent).toContain('The server checks them automatically within 15 minutes')
+  expect(host.textContent).toContain('re-checks account-a on a100, account-b on h100 at 8 CPUs')
+  expect(requests.every(r => r.method === 'GET')).toBe(true)
 })

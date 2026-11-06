@@ -1,5 +1,7 @@
 """API compatibility and per-request user perspectives over shared cached data."""
 from dataclasses import replace
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -73,7 +75,9 @@ async def test_query_validation_history_and_throttled_refresh(monitored):
 async def test_budget_units_are_explicit(monitored):
     _, mon, _ = monitored
     from monitor.parse import parse_shares
-    for resource, expected_unit, divisor in (("billing", "billing-minutes", 1), ("gres/gpu", "GPU-hours", 60)):
+    # NOW is in early October; the fixture's monthly reset is the next local midnight on the 1st.
+    reset_ms = int(datetime(2026, 11, 1, tzinfo=ZoneInfo(mon.timezone)).timestamp()) * 1000
+    for resource, expected_unit, divisor in (("billing", "SU", 60), ("gres/gpu", "GPU-hours", 60)):
         text = f"bvandur1_blabscify||100|0.1|1000|0.1||0.4|{resource}=60000|{resource}=12000|{resource}=6000"
         mon.store.add_shares(NOW + 1, parse_shares(text))
         result = ClusterOverview.model_validate(overview(mon, NOW * 1000))
@@ -83,6 +87,9 @@ async def test_budget_units_are_explicit(monitored):
         assert budget.used == 12000 / divisor
         assert budget.committed == 6000 / divisor
         assert budget.remaining == 42000 / divisor
+        assert budget.resets_at_ms == reset_ms
+    mon.store.set_meta("usage_reset", "NONE")
+    assert ClusterOverview.model_validate(overview(mon, NOW * 1000)).groups[0].accounts[0].budget.resets_at_ms is None
 
 
 @pytest.mark.anyio

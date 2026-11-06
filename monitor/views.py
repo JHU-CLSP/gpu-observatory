@@ -3,12 +3,17 @@ from __future__ import annotations
 
 
 from collections import defaultdict
+from datetime import date, datetime, timedelta
 import json
+from zoneinfo import ZoneInfo
 
 from .parse import account_load, budgeted, is_limited
 from .waits import WINDOWS, effective_gpus, gpu_class, observations, speed_table, tl_bucket
 
 SERIES_STEPS = {"24h": 900, "7d": 7200, "30d": 28800}
+# GrpTRESMins resources shown as budgets. ARCH defines 1 SU as one billing-hour ($0.001), so
+# Skipjack's default 10,800,000 billing-minute budget is its 180,000 SU monthly allocation.
+BUDGETS = (("billing", 60, "SU"), ("gres/gpu", 60, "GPU-hours"))
 
 
 def grid(now: int, span: int, step: int) -> list[int]:
@@ -27,6 +32,23 @@ def bucket_estimated(rows, buckets, step) -> list[bool]:
     for row in {r["ts"]: r for r in rows}.values():
         by[row["ts"] // step * step].append(row["est"])
     return [bool(by[b] and sum(by[b]) * 2 > len(by[b])) for b in buckets]
+
+
+def next_usage_reset(period: str | None, now: int, zone: str) -> int | None:
+    """The next PriorityUsageResetPeriod boundary (local midnight), or None if usage never resets."""
+    tz = ZoneInfo(zone)
+    today = datetime.fromtimestamp(now, tz).date()
+    if period == "DAILY":
+        day = today + timedelta(days=1)
+    elif period == "WEEKLY":
+        day = today + timedelta(days=(6 - today.weekday()) % 7 or 7)
+    elif period in ("MONTHLY", "QUARTERLY", "YEARLY"):
+        step = {"MONTHLY": 1, "QUARTERLY": 3, "YEARLY": 12}[period]
+        month = (today.year * 12 + today.month - 1) // step * step + step
+        day = date(month // 12, month % 12 + 1, 1)
+    else:
+        return None
+    return int(datetime(day.year, day.month, day.day, tzinfo=tz).timestamp())
 
 
 def minimum(values):
@@ -52,18 +74,19 @@ def overview(mon, now_ms: int, user=None) -> dict:
         users = {(r["account"], r["user"]): json.loads(r["data"]) for r in store.all("SELECT * FROM user_shares")}
         trend_grid = grid(now, 86400, 900)
         trend_rows = store.all("SELECT * FROM acct_samples WHERE ts>=?", trend_grid[0])
+        reset = next_usage_reset(store.meta("usage_reset"), now, mon.timezone)
         groups = {}
         for a in accounts:
             name = a["account"]
             l, s = load[name], shares.get(name, {})
             caps = a["caps"]
             budget = None
-            for resource, divisor, unit in (("billing", 1, "billing-minutes"), ("gres/gpu", 60, "GPU-hours")):
+            for resource, divisor, unit in BUDGETS:
                 limit = (s.get("budget_mins") or {}).get(resource)
                 if limit is not None and budgeted({resource: limit}):
                     used, running = s["used"].get(resource, 0), s["run"].get(resource, 0)
-                    budget = dict(unit=unit, limit=limit / divisor, used=used / divisor,
-                                  committed=running / divisor, remaining=(limit - used - running) / divisor)
+                    budget = dict(unit=unit, limit=limit / divisor, used=used / divisor, committed=running / divisor,
+                                  remaining=(limit - used - running) / divisor, resets_at_ms=reset * 1000 if reset is not None else None)
                     break
             mine = users.get((name, user), {})
             membership = a.get("members", {}).get(user)

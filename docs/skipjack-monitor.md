@@ -71,6 +71,7 @@ All backend names below have the prefix `OBSERVATORY_MONITOR_`.
 | `POLL_SECONDS` | `300` | Queue/nodes/shares interval, minimum 60 seconds. |
 | `BACKFILL_DAYS` | `14` | Initial history, 0–90 days. Set 0 to disable initial backfill. |
 | `COMMAND_TIMEOUT` | `60` | Deadline for each Slurm command, 1–300 seconds. |
+| `PROBE_AUTO` | `dkhasha1_safety:h200,bvandur1_blabscify:a100,dkhasha1_h200:h200_condo,dkhasha1_rtx6000:rtx6000_condo` | `account:partition` start-estimate selections refreshed every 15 minutes. Empty disables automatic probes. |
 
 SSH mode needs `python3` and the Slurm tools on the remote host. It sends a
 small Python command wrapper over stdin and installs nothing remotely. Slurm
@@ -100,9 +101,15 @@ Account `LevelFS` and user `FairShare` describe different levels of Slurm's fair
 share tree. The "best FS" badge compares member accounts with no recorded budget
 and account headroom. It is not a start-time prediction or submission check.
 
-Budgets show recorded billing-minutes or GPU-hours, including committed running
-usage. No monetary conversion is assumed. QoS determines enforcement. Missing
-readings remain unknown. Collection errors preserve previous successful data;
+Budgets come from `GrpTRESMins`. Billing budgets are shown in Service Units (SU),
+the unit of the ARCH allocation portal: 1 SU is one billing-hour (60 billing-minutes)
+and $0.001, so Skipjack's default 10,800,000 billing-minute budget is 180,000 SU
+($180) a month. GPU-minute budgets are shown in GPU-hours. The bar includes usage
+reserved by running jobs (`TRESRunMins`), and the reset date follows Slurm's
+`PriorityUsageResetPeriod` (monthly on Skipjack). The dollar figure is only ARCH's
+conversion; no charges are applied yet. The ARCH portal's weekly spend cap is
+shown only if Slurm reports it as a limit. QoS determines enforcement.
+Missing readings remain unknown. Collection errors preserve previous successful data;
 freshness/error notices identify that condition.
 
 Shared physical nodes count once per pool, including condo aliases. Queue waits
@@ -123,8 +130,13 @@ The separate **Scheduler start estimates** table compares 18 concrete requests:
 1, 4, and 8 GPUs, each with a 1, 4, 12, 24, 48, or 72-hour limit. Choose an account
 and partition, then select **Probe now**. Requests use one node, one task, the
 account's default QoS, and initially 8 CPUs and 64 GiB per GPU. The CPU and memory
-selectors change those assumptions without sending tests. Only **Probe now** (or
-an explicit API POST) requests tests; there are no automatic probe timers.
+selectors change those assumptions without sending tests. **Probe now** (or an
+explicit API POST) requests tests on demand. In addition, the server refreshes the
+`PROBE_AUTO` selections at 8 CPUs and 64 GiB per GPU every 15 minutes: one
+selection's next half-table per slot, with slots spread evenly over the 15 minutes
+(every 3.75 minutes for the four defaults, 36 tests per 15 minutes). A manual probe
+of the same settings counts as a refresh. Pairs that are not a probe account and
+monitored partition for the server's Slurm user are skipped with a log warning.
 Every row shows the exact resources, estimate,
 wait at probe time, timestamp, and expandable Slurm output. Rejected requests and
 missing estimates have no wait value. Site CLI warnings remain visible in the output.
@@ -139,8 +151,10 @@ fairshare, resource sizes, and queue state all matter.
 
 `sbatch` is optional; missing test-mode support leaves the other monitor panels
 available. Local and SSH execution both construct fixed argument lists and always
-include `--test-only`; arbitrary scripts, Slurm options, and user impersonation
-are not accepted. Environment-provided Slurm submission options are removed.
+include `--test-only` and `--comment=accept_cost` (Skipjack's submit filter
+otherwise cancels the request at its billing prompt); arbitrary scripts, Slurm
+options, and user impersonation are not accepted. Environment-provided Slurm
+submission options are removed.
 
 Each new batch checks half the table: 1/12/48-hour limits first, then 4/24/72-hour
 limits, alternating independently for each account/partition/CPU/memory selection.
@@ -167,7 +181,7 @@ All paths below start with `/stats/skipjack/monitor`:
 | `GET /queue-speed` | `window=24h\|7d\|30d`, `scope=all\|ours`, `limited=exclude\|include`. `ours` means configured tracked accounts. |
 | `GET /series` | `metric=groups\|pools`, `window=24h\|7d\|30d`. |
 | `POST /refresh` | Joins an in-flight collection; otherwise permits one manual refresh per minute. |
-| `GET /start-estimates` | Reads cached estimates, available probe accounts/partitions, all `timeLimitsMinutes`, and `nextTimeLimitsMinutes`. Optional `account`, `partition`, `cpus_per_gpu` (1–32, default 8), `memory_gib_per_gpu` (1–256, default 64). Defaults select the first available account and partition. |
+| `GET /start-estimates` | Reads cached estimates, available probe accounts/partitions, all `timeLimitsMinutes`, `nextTimeLimitsMinutes`, the valid `autoPairs`, and whether this selection is `autoRefresh`ed. Optional `account`, `partition`, `cpus_per_gpu` (1–32, default 8), `memory_gib_per_gpu` (1–256, default 64). Defaults select the first available account and partition. |
 | `POST /start-estimates` | Same query parameters; returns cached results or runs the next nine test-only requests, preserving the other half. Batches for the same settings are at least 15 minutes apart, with a global one-minute batch throttle. |
 
 Invalid queries return 422. Refresh returns 503 if unavailable and 429 with

@@ -1,13 +1,25 @@
 import { useMemo, useState } from "react";
-import { PendingJob, SkipjackStats } from "../types/gpu-stats";
+import { PendingJob, SkipjackPartition, SkipjackStats } from "../types/gpu-stats";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Server, Users, AlertCircle, Clock, ArrowUp, ArrowDown } from "lucide-react";
 import { Progress } from "./ui/progress";
 import { PendingReason, PendingReasonLegend } from "./PendingReason";
 import { SkipjackFairShare } from "./SkipjackFairShare";
+import { fmtSu, fmtUsd } from "./su";
 
 const TOP_USERS_SHOWN = 3;
+
+/** How a partition's GPU-hour price is set, and up to which CPU and memory sizes it holds. */
+function priceHint(p: SkipjackPartition, maxTres: boolean | undefined) {
+  const gpu = p.su_per_gpu_hour!;
+  const base = `Each GPU-hour on ${p.partition.toUpperCase()} costs ${fmtSu(gpu)} SU (${fmtUsd(gpu)} at ARCH's 1 SU = $0.001; no charges are applied yet).`;
+  const cpu = p.su_per_cpu_hour, gb = p.su_per_gb_hour;
+  if (cpu == null || gb == null) return base;
+  return maxTres
+    ? `${base} Slurm bills each node for its most expensive resource, so this holds up to ${Math.floor(gpu / cpu)} CPUs and ${Math.floor(gpu / gb)} GB of memory per GPU; beyond that, CPUs (${cpu} SU per core-hour) or memory (${gb.toFixed(2)} SU per GB-hour) set the price.`
+    : `${base} CPUs (${cpu} SU per core-hour) and memory (${gb.toFixed(2)} SU per GB-hour) are billed on top.`;
+}
 const USER_BREAKDOWN_CAP = 10;
 
 type QueueSortField = "queued_at" | "user" | "gpus" | "priority" | "reason";
@@ -304,6 +316,11 @@ export function SkipjackServerCard({ stats, error }: SkipjackServerCardProps) {
                       {partition.used}/{partition.total}
                     </span>
                   </div>
+                  {partition.su_per_gpu_hour != null && (
+                    <div className="text-xs text-muted-foreground cursor-help" title={priceHint(partition, stats.fairshare?.priority.max_tres)}>
+                      {fmtSu(partition.su_per_gpu_hour)} SU per GPU-hour · {fmtUsd(partition.su_per_gpu_hour)}
+                    </div>
+                  )}
                   <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
                     {segments.map((seg, i) =>
                       seg.value > 0 ? (

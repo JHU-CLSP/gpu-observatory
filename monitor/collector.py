@@ -12,10 +12,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .async_utils import run_in_thread
 
-from .commands import ASSOC_ARGS, PARTITION_ARGS, SHARE_FIELDS, CommandResult, nodes_args, queue_args, sacct_args
+from .commands import ASSOC_ARGS, CONFIG_ARGS, PARTITION_ARGS, SHARE_FIELDS, CommandResult, nodes_args, queue_args, sacct_args
 from .config import ClusterConfig
 from .transport import SlurmTransport
-from .parse import account_load, parse_associations, parse_jobs, parse_nodes, parse_partitions, parse_qos, parse_queue, parse_shares, pool_capacity
+from .parse import account_load, parse_associations, parse_jobs, parse_nodes, parse_partitions, parse_qos, parse_queue, parse_reset_period, parse_shares, pool_capacity
 from .reconstruct import fill_gaps
 from .store import ClusterDbLocked, ClusterStore
 from .probes import StartProbes
@@ -66,6 +66,7 @@ class ClusterMonitor:
         self._loop_task = None
         self._tick_task = None
         self._backfill_task = None
+        self._probe_task = None
         self._stopping = False
         self.probes = StartProbes(self)
 
@@ -89,6 +90,8 @@ class ClusterMonitor:
         self.available = self._transport_ready
         # Startup doesn't wait for Slurm or a history scan; the rest of the observatory can serve immediately.
         self._loop_task = asyncio.create_task(self._loop(), name="cluster-collector")
+        if self.config.probe_auto:
+            self._probe_task = asyncio.create_task(self.probes.auto_refresh(), name="start-time-auto-probes")
 
     def _open_store(self):
         # Retain ownership even if startup is cancelled while its worker finishes opening.
@@ -97,7 +100,7 @@ class ClusterMonitor:
     async def stop(self):
         self._stopping = True
         await self.probes.stop()
-        tasks = [t for t in (self._loop_task, self._tick_task, self._backfill_task) if t is not None]
+        tasks = [t for t in (self._loop_task, self._tick_task, self._backfill_task, self._probe_task) if t is not None]
         for task in tasks:
             task.cancel()
         try:
@@ -173,8 +176,13 @@ class ClusterMonitor:
         await self.tick()
 
     async def _metadata(self, now: int) -> list[str]:
-        assoc, partitions = await asyncio.gather(self._read("sacctmgr", ASSOC_ARGS), self._read("scontrol", PARTITION_ARGS))
+        assoc, partitions, config = await asyncio.gather(self._read("sacctmgr", ASSOC_ARGS), self._read("scontrol", PARTITION_ARGS),
+                                                         self._read("scontrol", CONFIG_ARGS))
         errors = []
+        if config.code == 0:
+            await run_in_thread(self.store.set_meta, "usage_reset", parse_reset_period(config.stdout))
+        else:
+            errors.append(self._failure("scontrol config", config))
         if partitions.code == 0:
             self.partition_meta = parse_partitions(partitions.stdout)
             await run_in_thread(self.store.replace_metadata, "partitions", list(self.partition_meta.values()), "name")

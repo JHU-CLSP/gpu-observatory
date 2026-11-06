@@ -9,7 +9,7 @@ const HELP = {
   partition: 'Slurm queue to test. The partition determines the GPU pool and scheduling rules; account access and resource limits can affect whether the request is accepted.',
   cpus: 'CPUs requested for each GPU; defaults to 8. Each row requests this value multiplied by its GPU count. For example, 8 CPUs per GPU with 4 GPUs requests 32 CPUs in total. Changing this setting only reads cached results; select Probe now to request tests.',
   memory: 'System RAM requested for each GPU, in GiB. This is host memory, not GPU memory (VRAM). For example, 64 GiB per GPU with 4 GPUs requests 256 GiB of RAM in total.',
-  probe: 'Request nine Slurm tests: 1, 4, and 8 GPUs for three time limits. New batches alternate between 1/12/48 hours and 4/24/72 hours, retaining the other results. The latest batch is reused for 15 minutes. Tests run only on request, submit no jobs, and allow at most one new batch per minute across all browsers.',
+  probe: 'Request nine Slurm tests: 1, 4, and 8 GPUs for three time limits. New batches alternate between 1/12/48 hours and 4/24/72 hours, retaining the other results. The latest batch is reused for 15 minutes. The server also re-checks its automatic selections every 15 minutes. Tests submit no jobs and allow at most one new batch per minute across all browsers.',
   gpus: 'Number of GPUs requested on a single node: 1, 4, or 8. The CPU and system RAM totals scale with this count.',
   time: 'Requested maximum running time: 1, 4, 12, 24, 48, or 72 hours. This is how long the job may run after starting, not how long it may wait in the queue. Each batch checks three of these limits; the next batch checks the other three.',
   resources: 'Total CPUs and system RAM requested by this row. Each total is the per-GPU setting multiplied by the number of GPUs. Memory is shown in GiB and does not include GPU VRAM.',
@@ -73,6 +73,7 @@ export function StartEstimatesPanel({ now, tz }: { now: number; tz: string }) {
   const cachedRows = new Map(data?.rows.map(row => [`${row.gpus}-${row.timeLimitMinutes}`, row]))
   const profiles = [1, 4, 8].flatMap(gpus => (data?.timeLimitsMinutes ?? []).map(minutes => ({ gpus, minutes })))
   const nextBatch = data?.nextTimeLimitsMinutes?.map(minutes => `${minutes / 60}h`).join(', ')
+  const autoPairs = data?.autoPairs.map(pair => pair.replace(':', ' on ')).join(', ')
   const nextBatchWait = data?.checkedAtMs != null ? Math.max(0, (data.checkedAtMs + data.cacheSeconds * 1000 - now) / 1000) : 0
 
   return <section aria-label="Scheduler start estimates">
@@ -97,12 +98,13 @@ export function StartEstimatesPanel({ now, tz }: { now: number; tz: string }) {
         {[8, 16, 32, 64, 128, 256].map(value => <option key={value}>{value}</option>)}
       </select></label>
       <span {...bind(HELP.probe)}><button aria-describedby={`${helpId}-probe`} onClick={() => void load('POST')} disabled={busy || !data?.available}>{busy ? 'Probing…' : 'Probe now'}</button></span>
-      {data?.checkedAtMs != null && <span className="muted small probe-help" tabIndex={0} {...help('updated')}>checked {relTime(data.checkedAtMs, now)}{stale ? ' · awaiting a new probe' : ''}</span>}
+      {data?.checkedAtMs != null && <span className="muted small probe-help" tabIndex={0} {...help('updated')}>checked {relTime(data.checkedAtMs, now)}{stale ? (data.autoRefresh ? ' · automatic check due' : ' · awaiting a new probe') : ''}</span>}
+      {data?.autoRefresh && <span className="chip outline" title="The server re-checks these settings every 15 minutes, half of the table at a time">auto · 15 min</span>}
     </div>
     {(error || data?.error) && <p className="banner warn" role="status">{error || data?.error}</p>}
     {nextBatch && <p className="muted small" style={{ marginBottom: 6 }}>Next batch: {nextBatch} × 1, 4, 8 GPUs · 9 checks{nextBatchWait > 0 ? ` · eligible in ${fmtWait(nextBatchWait)}` : ''}.</p>}
     {busy && <p className="muted small" role="status">Checking nine requests sequentially. Previous estimates remain visible; only this half of the table will be updated.</p>}
-    {data && !data.rows.length && <p className="muted small" style={{ marginBottom: 6 }}>No cached estimates for these settings. Select Probe now to check the first half of the table.</p>}
+    {data && !data.rows.length && <p className="muted small" style={{ marginBottom: 6 }}>No cached estimates for these settings. {data.autoRefresh ? 'The server checks them automatically within 15 minutes, or select Probe now.' : 'Select Probe now to check the first half of the table.'}</p>}
     <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
       {!data ? <p className="muted" style={{ padding: 12 }}>Loading scheduler estimates…</p> :
         <table className="data probe-table">
@@ -118,7 +120,9 @@ export function StartEstimatesPanel({ now, tz }: { now: number; tz: string }) {
           })}</tbody>
         </table>}
     </div>
-    <p className="muted small" style={{ marginTop: 6 }}>Only Probe now sends tests; changing settings and polling read cached data. Each new batch checks half the time limits and keeps the other results. Batches for the same settings are at least 15 minutes apart. All browsers share the cache and a limit of one new batch per minute.</p>
+    <p className="muted small" style={{ marginTop: 6 }}>{autoPairs
+      ? <>Probe now sends tests on request, and every 15 minutes the server re-checks {autoPairs} at 8 CPUs and 64 GiB per GPU, one selection’s half-table at a time spread across the interval. Changing settings and polling read cached data.</>
+      : 'Only Probe now sends tests; changing settings and polling read cached data.'} Each new batch checks half the time limits and keeps the other results. Batches for the same settings are at least 15 minutes apart. All browsers share the cache and a limit of one new batch per minute.</p>
     {Object.entries(HELP).map(([key, text]) => <span key={key} id={`${helpId}-${key}`} className="sr-only">{text}</span>)}
     {node}
   </section>

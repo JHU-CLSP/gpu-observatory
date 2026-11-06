@@ -38,11 +38,12 @@ class ClusterStatusView(ClusterModel):
 
 
 class BudgetView(ClusterModel):
-    unit: Literal["billing-minutes", "GPU-hours"]
+    unit: Literal["SU", "GPU-hours"]
     limit: float
     used: float
     committed: float
     remaining: float
+    resets_at_ms: Optional[int]
 
 
 class AccountRunLoad(ClusterModel):
@@ -210,6 +211,8 @@ class StartEstimatesResponse(ClusterModel):
     probe_user: Optional[str]
     accounts: list[str]
     partitions: list[str]
+    auto_pairs: list[str]
+    auto_refresh: bool
     account: Optional[str]
     partition: Optional[str]
     cpus_per_gpu: int

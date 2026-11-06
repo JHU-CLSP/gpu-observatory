@@ -123,7 +123,7 @@ export interface components {
              * Unit
              * @enum {string}
              */
-            unit: "billing-minutes" | "GPU-hours";
+            unit: "SU" | "GPU-hours";
             /** Limit */
             limit: number;
             /** Used */
@@ -132,6 +132,8 @@ export interface components {
             committed: number;
             /** Remaining */
             remaining: number;
+            /** Resetsatms */
+            resetsAtMs: number | null;
         };
         /** ClusterAccountView */
         ClusterAccountView: {
@@ -447,6 +449,10 @@ export interface components {
             accounts: string[];
             /** Partitions */
             partitions: string[];
+            /** Autopairs */
+            autoPairs: string[];
+            /** Autorefresh */
+            autoRefresh: boolean;
             /** Account */
             account: string | null;
             /** Partition */

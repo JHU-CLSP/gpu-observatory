@@ -14,7 +14,7 @@ import statistics
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 REMOTE = "skipjack"
 
@@ -112,6 +112,24 @@ def _tres_gpu(tres):
     return int(m.group(1)) if m else None
 
 
+def _tres_billing(tres):
+    m = re.search(r"(?:^|,)billing=(\d+)", tres)
+    return int(m.group(1)) if m else None
+
+
+def _next_usage_reset(period, today):
+    """Date of the next PriorityUsageResetPeriod boundary; Slurm clears usage at 00:00 local time."""
+    if period == "DAILY":
+        return today + timedelta(days=1)
+    if period == "WEEKLY":  # Sundays
+        return today + timedelta(days=(6 - today.weekday()) % 7 or 7)
+    step = {"MONTHLY": 1, "QUARTERLY": 3, "YEARLY": 12}.get(period)
+    if step is None:
+        return None
+    month = (today.year * 12 + today.month - 1) // step * step + step
+    return date(month // 12, month % 12 + 1, 1)
+
+
 def get_priority_config():
     out = run(["scontrol", "show", "config"])
 
@@ -127,6 +145,7 @@ def get_priority_config():
         m = re.match(r"(\d+)-", field(name) or "")
         return int(m.group(1)) if m else None
 
+    reset = _next_usage_reset(field("PriorityUsageResetPeriod"), date.today())
     return {
         # Relative weight of each priority factor (each factor is 0-1, then
         # multiplied by its weight and summed into the job's priority).
@@ -140,6 +159,10 @@ def get_priority_config():
         "max_age_days": days("PriorityMaxAge"),
         "decay_half_life_days": days("PriorityDecayHalfLife"),
         "usage_reset": field("PriorityUsageResetPeriod"),
+        # A job's billing on each node is its most expensive weighted resource
+        # (GPUs, CPUs, or memory) rather than their sum.
+        "max_tres": "MAX_TRES" in (field("PriorityFlags") or "").split(","),
+        "usage_resets_on": reset.isoformat() if reset else None,
         "favor_small": field("PriorityFavorSmall") == "yes",
         "backfill": field("SchedulerType") == "sched/backfill",
     }
@@ -163,7 +186,7 @@ def get_account_qos():
 
 
 def get_fairshare():
-    out = run(["sshare", "-l", "-P", "-n", "-o", "Account,User,RawShares,NormShares,EffectvUsage,LevelFS,GrpTRESMins,GrpTRESRaw"])
+    out = run(["sshare", "-l", "-P", "-n", "-o", "Account,User,RawShares,NormShares,EffectvUsage,LevelFS,GrpTRESMins,GrpTRESRaw,TRESRunMins"])
     rows = []
     for line in out.splitlines():
         parts = line.split("|")
@@ -173,6 +196,8 @@ def get_fairshare():
         budget_mins = _tres_gpu(parts[6])
         used_mins = _tres_gpu(parts[7])
         has_budget = budget_mins is not None and budget_mins < UNLIMITED_TRES_MINS
+        su_budget_mins = _tres_billing(parts[6])
+        has_su_budget = su_budget_mins is not None and su_budget_mins < UNLIMITED_TRES_MINS
         rows.append({
             "account": parts[0].strip(),
             "depth": len(parts[0]) - len(parts[0].lstrip(" ")),
@@ -186,6 +211,13 @@ def get_fairshare():
             # being scheduled once it's spent, until usage decays/resets.
             "gpu_hours_budget": budget_mins / 60 if has_budget else None,
             "gpu_hours_used": (used_mins or 0) / 60 if has_budget else None,
+            # A spending budget on billing (GrpTRESMins), in ARCH Service Units:
+            # 1 SU = one billing-hour = $0.001. Reserved is what running jobs
+            # would still use by their time limits; a job only starts if its
+            # whole time limit fits in what's left.
+            "su_budget": su_budget_mins / 60 if has_su_budget else None,
+            "su_used": (_tres_billing(parts[7]) or 0) / 60 if has_su_budget else None,
+            "su_reserved": (_tres_billing(parts[8]) or 0) / 60 if has_su_budget and len(parts) > 8 else None,
         })
 
     pi_name = "pi-" + TEAM_ACCOUNT
@@ -376,7 +408,26 @@ print(f"{'TOTAL':<8} {grand_total:>6} {grand_alloc:>6} {grand_idle:>6} {grand_do
 # Section 1b: Partition access info (raw ACLs, no accessibility judgment)
 # ============================================================
 
+def _billing_weights(info):
+    """TRESBillingWeights as SU per hour of one GPU, CPU, or GB of memory (1 SU = one billing-hour)."""
+    m = re.search(r"TRESBillingWeights=(\S+)", info)
+    weights = {}
+    for item in m.group(1).split(",") if m else []:
+        key, _, value = item.partition("=")
+        number = re.fullmatch(r"([\d.]+)([KMGT]?)", value)
+        if number:
+            weights[key.lower()] = (float(number.group(1)), number.group(2))
+    mem, unit = weights.get("mem", (None, ""))
+    return {
+        "su_per_gpu_hour": weights.get("gres/gpu", (None,))[0],
+        "su_per_cpu_hour": weights.get("cpu", (None,))[0],
+        # Memory weights are per MB unless suffixed (Mem=5.6G is per GB).
+        "su_per_gb_hour": mem * {"K": 1024 ** 2, "": 1024, "M": 1024, "G": 1, "T": 1 / 1024}[unit] if mem is not None else None,
+    }
+
+
 partition_access = {}
+partition_billing = {}
 for p in PARTITIONS:
     info = run(["scontrol", "show", "partition", p])
     def field(name):
@@ -388,6 +439,7 @@ for p in PARTITIONS:
         "allow_qos":      field("AllowQos"),
         "deny_qos":       field("DenyQos"),
     }
+    partition_billing[p] = _billing_weights(info)
 
 # For the fair-share panel's "which account can run what": non-condo team
 # accounts run on the partitions open to the JHU-wide allocation
@@ -719,6 +771,7 @@ report = {
             "deny_accounts":  partition_access[p]["deny_accounts"],
             "allow_qos":      partition_access[p]["allow_qos"],
             "deny_qos":       partition_access[p]["deny_qos"],
+            **partition_billing[p],
         }
         for p in PARTITIONS
     ],

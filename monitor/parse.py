@@ -89,6 +89,11 @@ def budgeted(value: dict | None) -> bool:
     return bool(value) and any(n < 1e9 for n in value.values())
 
 
+def parse_reset_period(stdout: str) -> str | None:
+    match = re.search(r"^PriorityUsageResetPeriod\s*=\s*(\S+)", stdout, re.M)
+    return match[1].upper() if match else None
+
+
 def shape(value: str) -> dict:
     fields = dict(part.split("=", 1) for part in value.split(",") if "=" in part)
     return {"gpus": gpu_count(value), "cpus": integer(fields.get("cpu")) or 1,

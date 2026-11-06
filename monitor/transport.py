@@ -27,7 +27,7 @@ if request["command"] == "preflight":
         "username": pwd.getpwuid(os.getuid()).pw_name, "can_probe": shutil.which("sbatch", path=env.get("PATH")) is not None}))
     sys.exit(0)
 if request["command"] == "test-start":
-    patterns = (r"--account=[\w.-]+", r"--partition=[\w.-]+", r"--nodes=1", r"--ntasks=1",
+    patterns = (r"--account=[\w.-]+", r"--partition=[\w.-]+", r"--nodes=1", r"--ntasks=1", r"--comment=accept_cost",
         r"--gres=gpu:(1|4|8)", r"--cpus-per-task=\d+", r"--mem=\d+G", r"--time=(60|240|720|1440|2880|4320)")
     if len(request["args"]) != len(patterns) or not all(re.fullmatch(p, a) for p, a in zip(patterns, request["args"])):
         sys.exit("Unsupported test request")

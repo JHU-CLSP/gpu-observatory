@@ -16,6 +16,7 @@ NODE_FORMAT = "NodeList:40,Partition:40,StateLong:24,Gres:80,GresUsed:120,CPUsSt
 SHARE_FIELDS = "Account,User,RawShares,NormShares,RawUsage,EffectvUsage,FairShare,LevelFS,GrpTRESMins,GrpTRESRaw,TRESRunMins"
 ASSOC_ARGS = ["-nP", "show", "assoc", "format=Account,ParentName,User,QOS,GrpTRES,GrpTRESMins"]
 PARTITION_ARGS = ["-a", "-o", "show", "partition"]
+CONFIG_ARGS = ["show", "config"]
 REQUIRED_COMMANDS = ("squeue", "sinfo", "sshare", "sacct", "sacctmgr", "scontrol")
 PROBE_TIME_LIMITS = (60, 240, 720, 1440, 2880, 4320)
 
@@ -26,7 +27,8 @@ def probe_args(account: str, partition: str, gpus: int, minutes: int, cpus: int,
         raise ValueError("Invalid account or partition")
     if gpus not in (1, 4, 8) or minutes not in PROBE_TIME_LIMITS or not 1 <= cpus <= 256 or not 1 <= memory_gib <= 2048:
         raise ValueError("Unsupported probe size")
-    return [f"--account={account}", f"--partition={partition}", "--nodes=1", "--ntasks=1",
+    # Skipjack's submit filter cancels requests without accept_cost at its billing prompt, even test-only ones.
+    return [f"--account={account}", f"--partition={partition}", "--nodes=1", "--ntasks=1", "--comment=accept_cost",
             f"--gres=gpu:{gpus}", f"--cpus-per-task={cpus}", f"--mem={memory_gib}G", f"--time={minutes}"]
 
 
